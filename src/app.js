@@ -150,7 +150,7 @@ let search_group_template = {
     methods: {
         onChange(e) {
             this.searchType = e.target.name;
-            this.isOpen = !this.isOpen;
+            //this.isOpen = !this.isOpen;
             this.inputAdress = '';
         },
         returnType(type) {
