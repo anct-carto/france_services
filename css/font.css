@@ -1,0 +1,37 @@
+@font-face {
+  font-family: 'Marianne-Regular';
+  src: url('fonts/Marianne-Regular.woff2');
+}
+
+@font-face {
+  font-family: 'Marianne-Bold';
+  src: url('fonts/Marianne-Bold.woff2');
+}
+
+@font-face {
+  font-family: 'Abel-Bold';
+  src: url('fonts/Abel-Pro-Bold.otf');
+}
+
+@font-face {
+  font-family: 'Abel-Regular';
+  font-style: lighter;
+  font-weight: 200;
+  src: url('fonts/abel-v10-latin-regular.eot'); /* IE9 Compat Modes */
+  src: local('Abel Regular'), local('Abel-Regular'),
+       url('fonts/abel-v10-latin-regular.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+       url('fonts/abel-v10-latin-regular.woff2') format('woff2'), /* Super Modern Browsers */
+       url('fonts/abel-v10-latin-regular.woff') format('woff'), /* Modern Browsers */
+       url('fonts/abel-v10-latin-regular.ttf') format('truetype'), /* Safari, Android, iOS */
+       url('fonts/abel-v10-latin-regular.svg#Abel') format('svg'); /* Legacy iOS */
+}
+
+@font-face {
+  font-family: 'FontAwesome';
+  src: url('fonts/fontawesome-webfont.eot');
+  src: url('fonts/fontawesome-webfont.eot') format('embedded-opentype'), 
+  url('fonts/fontawesome-webfont.woff2?v=4.5.0') format('woff2'), 
+  url('fonts/fontawesome-webfont.woff?v=4.5.0') format('woff'), url('fonts/fontawesome-webfont.ttf?v=4.5.0') format('truetype'), url('fonts/fontawesome-webfont.svg?v=4.5.0#fontawesomeregular') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}

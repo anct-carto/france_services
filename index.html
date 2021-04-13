@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="img/index.ico" type="image/ico"/>
+    <title>Carte France services - ANCT</title>
+    <!-- style sheets -->
+    <!-- line awesome (pictos) -->
+    <link rel="stylesheet" href="lib/line-awesome-1.3.0/css/line-awesome.min.css">
+    <!-- bootstrap -->
+    <link rel="stylesheet" href="lib/bootstrap.min.css">
+    <!-- leaflet et leaflet extensions -->
+    <link rel="stylesheet" href="lib/leaflet.css" />
+    <link rel="stylesheet" href="lib/leaflet-sidebar.min.css">
+    <link rel="stylesheet" href="lib/L.Control.ZoomMin.css">
+    <link rel="stylesheet" href="lib/leaflet.fullscreen.css" />
+    <link rel="stylesheet" href="css/font.css">
+    <link rel="stylesheet" href="css/style.css">
+    <!-- dependances -->
+    <!-- vue, leaflet -->
+    <script src="lib/vue.min.js"></script>
+    <script src="lib/leaflet.js"></script>
+    <script src="lib/vue-html-to-paper.js"></script>
+    <!-- bootstrap -->
+    <script src="lib/jquery.min.js"></script>
+    <script src="lib/bootstrap.bundle.min.js"></script>
+    <script src='lib/tabletop.min.js'></script>
+    <!-- leaflet extensions -->
+    <script src="lib/leaflet-sidebar.min.js"></script>
+    <script src="lib/Leaflet.fullscreen.min.js"></script>
+    <script src="lib/L.Control.ZoomMin.js"></script>
+    <!-- turfjs -->
+    <script src='lib/turf.min.js'></script>
+  </head>
+  <body>
+    <div class="w-100 h-100 d-flex flex-column justify-content-center align-items-center" id = "loading">
+      <!-- <img src="img/logo_FranceServices-01.png" style="width:200px;background-color: white;"> -->
+      <div class="row">
+        <div class="spinner-border" role="status">
+          <p class="sr-only">Loading...</p>
+        </div>
+      </div>
+      <div class="row">
+        <p>Chargement des données en cours ...</p>
+      </div>
+    </div>
+    <div id="app">
+      <leaflet-map ref="map"></leaflet-map>
+    </div>
+    <!-- chargement script js -->
+    <script src= "src/app.js"></script>
+  </body>
+</html>

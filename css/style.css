@@ -1,0 +1,518 @@
+:root {
+	--bleu-anct:rgb(41, 49, 115);
+	--bleu-second:#5770be;
+	--jaune-anct:#ffe800;
+	--vert-anct:#00ac8c;
+	--font-size-global:1em;
+}
+
+
+body {
+	padding: 0;
+	margin:0;
+}
+
+
+html, body, #mapid {
+	height: 100%;
+	width: 100%;
+	position: absolute;
+	font-family: 'Marianne-regular', Arial, Helvetica, sans-serif !important;
+}
+
+body i {
+	vertical-align:text-bottom;
+	font-size: 1.5em;
+}
+
+ul {
+	list-style: none;
+	display: inline-block;
+	vertical-align: top;
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* 								SCREEN LOADING					   	 		  */													
+/* -------------------------------------------------------------------------- */
+
+
+#bg-loading {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	z-index: 1000;
+	background: black;
+	opacity: .7;
+}
+
+#loading {
+	background-color: rgba(0,0,0,.75);
+	font-size: 1.1em;
+	color:white;
+	padding:100px;
+	position: absolute;
+	display: block;
+	z-index: 5000;
+}
+
+#map {
+	width: 100%;
+	height: 100%;
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* 								LEAFLET SIDEBAR					   	 		  */													
+/* -------------------------------------------------------------------------- */
+
+#sidebar {
+	position: absolute;
+}
+
+
+.leaflet-sidebar-header {
+	background-color:var(--bleu-anct);
+	font-family: 'Marianne-Bold';
+	text-transform: uppercase;
+	margin-bottom: 10px;
+	display: block;
+}
+
+.leaflet-sidebar-content {
+	background-color: rgba(255,255,255,.85);
+	backdrop-filter:blur(6px);
+}
+
+
+.leaflet-sidebar-tabs > ul > li.active,
+.leaflet-sidebar-tabs > ul > li.active:hover {
+	 background-color: var(--bleu-anct);
+ }
+
+.leaflet-sidebar-tabs > ul > li:hover {
+	background-color: rgba(0,0,0,.25);
+	transition: .2s;
+}
+
+.leaflet-sidebar-tabs {
+	 background-color: #F4F4F4;
+	 box-shadow: 2px 0px 2px 0px #656565;
+	 
+}
+
+#programme-logo {
+	display: inline-flexbox;
+	width: 38%;
+	padding-bottom: 5%; 
+	padding-top: 5%; 
+	float:'center';
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* 								LEAFLET LEGEND						 		  */
+/* -------------------------------------------------------------------------- */
+
+
+.leaflet-legend {
+	font-family: 'Abel-Regular';
+	font-size: 1.1em;
+	background-color: rgba(255,255,255,.95);
+	padding: 10px;
+	box-shadow: 0 1px 5px rgba(0,0,0,.5), 0 2px 4px rgba(0,0,0,.1);
+	border-radius: 4px;
+	z-index: 500 !important;
+	margin-top: -100%;
+	height: auto;
+	max-height: 100px;
+	transition:max-height 0.3s ease-out;
+	overflow: hidden;
+}
+
+.leaflet-legend i {
+	font-size: 1.05em;
+}
+
+.leaflet-legend-marker-siege {
+	border: 1px solid white;
+	border-radius: 50%;
+	display: inline-block;
+	vertical-align: middle;
+	height: 10px;
+	width: 10px;
+	background-color: var(--bleu-anct);
+}
+
+.leaflet-legend-marker-antenne {
+	border: 1px solid white;
+	border-radius: 50%;
+	display: inline-block;
+	vertical-align: middle;
+	height: 10px;
+	width: 10px;
+	background-color: var(--bleu-second);
+}
+
+.leaflet-legend-marker-bus {
+	border: 1px solid white;
+	border-radius: 50%;
+	display: inline-block;
+	vertical-align: middle;
+	height: 10px;
+	width: 10px;
+	background-color: var(--vert-anct);
+}
+
+.leaflet-legend-perimeter {
+	vertical-align: middle;
+	height: 15px;
+	width: 15px;
+	background-color: none;
+	border: 2px solid red;
+	border-radius: 50%;
+	display: inline-block;
+	vertical-align: middle;
+}
+
+
+
+/* -------------------------------------------------------------------------- */
+/* 									LEAFLET MAP						 		  */
+/* -------------------------------------------------------------------------- */
+
+.leaflet-top, .leaflet-bottom {
+	z-index: 500 !important;
+}
+
+/* delete arrow */
+.leaflet-tooltip-top:before, 
+.leaflet-tooltip-bottom:before {
+	border: none !important;
+}
+
+.leaflet-tooltip {
+	top: -10px;
+	border:none !important;
+	box-shadow: 0 1px 2px rgba(0,0,0,.1) !important;
+	color: white !important;
+	font-size:1.2em;
+	font-family: 'Abel-Regular';
+}
+
+
+.leaflet-tooltip-siege {
+	top:-35px;
+	background-color: var(--bleu-anct) !important;
+}
+
+.leaflet-tooltip-antenne {
+	top:-35px;
+	background-color: var(--bleu-second) !important;
+}
+
+.leaflet-tooltip-bus {
+	top:-35px;
+	background-color: var(--vert-anct) !important;
+}
+
+.leaflet-tooltip-result {
+	font-family: 'Abel-Bold' !important;
+	letter-spacing: -.05em;
+	border:2px solid var(--bleu-second) !important;
+	color: var(--bleu-second) !important;
+	background-color: white !important;
+}
+
+.fs-marker {
+	filter: drop-shadow( 1px 1px 1px rgba(0, 0, 0, .3) );
+}
+
+/* -------------------------------------------------------------------------- */
+/* 									COUNTERS						 		  */
+/* -------------------------------------------------------------------------- */
+
+.counters {
+	margin-right: 10px;
+	text-align: center;
+	margin-bottom: 20px;
+}
+
+.counters:hover {
+	box-shadow: none;
+}
+
+.counter {
+	font-family: 'Marianne-Bold';
+	font-size: 2.4em;
+	margin-bottom: 0;
+}
+
+.Siège {
+	color: var(--bleu-anct);
+}
+
+.Antenne {
+	color: var(--bleu-second);
+}
+
+.Bus {
+	color: var(--vert-anct);
+}
+
+
+
+/* -------------------------------------------------------------------------- */
+/* 									SEARCH BAR						 		  */
+/* -------------------------------------------------------------------------- */
+
+#search-bar-container {
+	position: relative;
+	margin-bottom: 10px;
+}
+
+
+.input-group-prepend {
+	position: relative;
+}
+
+#search-field {
+	font-size: 1.15em;
+	border-right: none;
+}
+
+#search-type-group {
+	display: flex;
+	align-items:center;
+	margin-bottom: 10px;
+}
+
+#search-type-text, #search-type-radio  {
+	float: left;
+	vertical-align: center;
+	font-size: 1.1em;
+	width: 50%;
+	height: 25px;
+}
+
+.search-type-btn {
+	width: 110px;
+	padding-top:2px;
+	padding-bottom:4px;
+	background-color: white;
+	color: var(--bleu-second);
+	border-color: var(--bleu-second);
+	font-size: var(--font-size-global);
+	transition: all 0.1s ease-in-out;
+	box-shadow: 0 0 2px 2px rgba(0, 0, 0, .1) inset 
+
+}
+
+.search-type-btn:hover, 
+.search-type-btn:active, 
+.search-type-btn.active, 
+.search-type-btn:focus  {
+	background-color: var(--bleu-second) !important;
+	border-color: var(--bleu-second) !important;
+	outline: none;
+	box-shadow: none;
+}
+
+.search-type-btn.active {
+	font-family: 'Marianne-Bold';
+}
+
+
+.list-group {
+	width: 100%;
+	position: absolute;
+	z-index: 1;
+}
+
+
+.list-group-item {
+	box-shadow: 0 10px 20px rgba(0,0,0,.12), 0 4px 8px rgba(0,0,0,.06);
+	background-color: white;
+	cursor: pointer;
+	transition: .05	s;
+}
+
+.list-group-item.is-active, .list-group-item:hover {
+	background-color: var(--bleu-second);
+	font-weight: bolder;
+	color:white;
+	display: block;
+}
+
+.search-result-label {
+	font-family: 'Marianne-Bold';
+}
+
+.search-result-context {
+	font-weight: lighter;
+	font-size: .9em;
+}
+
+.search-result-type {
+	float: right;
+	font-size: .85em;
+}
+
+
+/* reinitialize button */
+#btn-reinitialize {
+	float: right;
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+}
+
+#search-results-header {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	align-items: center;	
+}
+
+
+#nb-results {
+	font-size: 1.4em;
+}
+
+#text-distance {
+	font-style: italic;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 								 	CARDS						   	 		  */													
+/* -------------------------------------------------------------------------- */
+
+#results {
+	margin-top: 10px;
+}
+
+.result-card {
+	cursor: pointer;
+	margin-bottom: 10px;
+	background-color: white;
+	transition: .09s;
+}
+
+.result-card:hover, .hovered {
+	transform: scale(1.02);
+	box-shadow: 0 10px 10px rgba(0,0,0,.08), 0 4px 8px rgba(0,0,0,.2);
+}
+
+.hovered {
+	border:solid 1px red;
+}
+
+.card-header {
+	text-transform: uppercase;
+	padding-top: 5px;
+	padding-bottom: 5px;
+	color:white;
+	font-family: 'Marianne-Bold';
+	vertical-align: center;
+	font-size: 1.1em;
+}
+
+.card-header i {
+	font-size: 1.55em;
+	font-weight: bolder;
+}
+
+.distance {
+	float: right;
+	font-family: 'Marianne-Regular';
+}
+
+.card-body {
+	padding-top: 10px;
+	padding-bottom: 10px;
+}
+
+.card-body ul {
+	padding-left: 5px;
+	margin-bottom: 5px;
+}
+
+.card-body p {
+	margin-bottom: 5px;
+}
+
+.collapse-text {
+	justify-content: center;
+	font-style: italic;
+}
+
+/* header card */
+.fs-siege {
+	background-color: var(--bleu-anct);
+}
+
+.fs-antenne {
+	background-color: var(--bleu-second);
+}
+
+.fs-bus {
+	background-color: var(--vert-anct);
+}
+
+
+.card-btn {
+	/* margin-top: 10px; */
+	font-size: var(--font-size-global);
+	text-align: center;
+	color: var(--bleu-second);
+	border-color: var(--bleu-second);
+}
+
+.card-btn i {
+	vertical-align: bottom;
+}
+
+.card-btn:hover, .card-btn:active, .card-btn:visited {
+	font-family: 'Marianne-Bold' !important;
+	background-color: var(--bleu-second) !important;
+	border-color: var(--bleu-second)!important;
+}
+
+.card-btn:focus {
+	outline:none;
+	box-shadow: none;
+}
+
+/* show more cards */
+.show-more-btn {
+	color: var(--bleu-second);
+	font-size: 1.1em;
+	text-align: center;
+	padding: 0;
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* 								 SCROLL BAR						   	 		  */													
+/* -------------------------------------------------------------------------- */
+
+
+/* width */
+::-webkit-scrollbar {
+	width: 5px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+	background: #f1f1f1; 
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+	background: #888; 
+	border-radius: 2px;
+  }
+  
+  /* Handle on hover */
+  ::-webkit-scrollbar-thumb:hover {
+	background: #555; 
+  }
