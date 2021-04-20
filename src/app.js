@@ -715,7 +715,7 @@ let map_template = {
                 center: [46.413220, 1.219482],
                 zoomSnap: 0.5,
                 zoomControl: false,
-                // preferCanvas: true
+                preferCanvas: true
             },
             data: fs_tab_fetched,
             circles: {
