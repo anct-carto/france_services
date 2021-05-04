@@ -282,21 +282,18 @@ ul {
 }
 
 #search-type-group {
-	display: flex;
+	display: grid;
 	align-items:center;
 	margin-bottom: 10px;
 }
 
 #search-type-text, #search-type-radio  {
-	float: left;
 	vertical-align: center;
 	font-size: 1.1em;
-	width: 50%;
 	height: 25px;
 }
 
 .search-type-btn {
-	width: 110px;
 	padding-top:2px;
 	padding-bottom:4px;
 	background-color: white;
@@ -337,7 +334,7 @@ ul {
 	transition: .05	s;
 }
 
-.list-group-item.is-active, .list-group-item:hover {
+.list-group-item.is-active {
 	background-color: var(--bleu-second);
 	font-weight: bolder;
 	color:white;

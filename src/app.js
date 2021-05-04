@@ -143,6 +143,7 @@ let search_group_template = {
             if(!this.inputAdress) {
                 this.isOpen = !this.isOpen;
                 this.index = 0;
+                this.suggestionsList = [];
                 // this.$emit('searchResult',' ') // reinitialize map
             }
         }
@@ -990,7 +991,7 @@ let map_template = {
                 // check if app loaded in an iframe
                 this.iframe ? this.sidebar.open("home") : this.sidebar.open("search-tab"); 
                 // focus on search bar
-                document.getElementById("search-field").focus();
+                // document.getElementById("search-field").focus();
 
                 let circle_markers = L.layerGroup({});
 
