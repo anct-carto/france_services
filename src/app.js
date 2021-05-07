@@ -1119,6 +1119,8 @@ let map_template = {
                 a.lib_fs > b.lib_fs ? compare = 1 : compare = 0;
                 return compare 
             });
+            // purge object from distance property (computed in 'address' search)
+            this.fs_cards.forEach(e => delete e.distance)
 
 
             // draw departement borders
@@ -1156,7 +1158,7 @@ let map_template = {
         this.checkPageStatus();
         this.loadDep();
     },
-}
+};
 
 
 // finale instance vue
