@@ -6,23 +6,30 @@ const api_admin = "https://geo.api.gouv.fr/departements?nom=";
 
 const loading = document.getElementById("loading");
 
-let data_url = "https://docs.google.com/spreadsheets/d/1_i0-v9EOrFhEiHQSk6wdBFpsfaAU0oxjm-pEhviJdxM/edit?usp=sharing"
+//let data_url = "https://docs.google.com/spreadsheets/d/1_i0-v9EOrFhEiHQSk6wdBFpsfaAU0oxjm-pEhviJdxM/edit?usp=sharing"
+let data_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuDOzH3iy8ZNpDJiXHLyILhTgmEdeJUa7GicPR7QdEngN6d4jPMFvfERkVOTN0qal96k5aeGXtxMzA/pub?output=csv"
 let fs_tab_fetched = [];
 let page_status;
 
 
 function init() {
-    Tabletop.init({
+    Papa.parse(data_url, {
+        download: true,
+        header: true,
+        complete: (results) => fetchSpreadsheetData(results.data)
+    });
+/*    Tabletop.init({
       key: data_url,
       callback: fetchSpreadsheetData,
       simpleSheet: true,
-    })
+    })*/
 };
 
 function fetchSpreadsheetData(res) {
     res.forEach(e => { fs_tab_fetched.push(e)});
     fs_tab_fetched.forEach(e => {
-        if(e.itinerance == "Non") {
+        e.itinerance = e["itinerance"].toLowerCase();
+        if(e.itinerance == "non") {
             if(e.format_fs == "Espace labellisé") {
                 e.type = "Siège";
             } else if(e.format_fs == "Antenne") {
@@ -332,8 +339,8 @@ let card_template = {
         },
         getFontIcon() {
             return {
-                'las la-home': this.fs.itinerance === 'Non',
-                'las la-shuttle-van': this.fs.itinerance === 'Oui',
+                'las la-home': this.fs.itinerance === 'non',
+                'las la-shuttle-van': this.fs.itinerance === 'oui',
             }
         },
         getHoveredCard() {
@@ -379,7 +386,7 @@ let card_template = {
                 </div>
                 <div class="card-body"">
                   <div class = "intro">
-                    <p v-if="fs.itinerance=='Oui'">
+                    <p v-if="fs.itinerance=='oui'">
                         <i class="las la-exclamation-circle"></i> 
                         <ul>
                             <li>Cette France services est en itinérance</li>
@@ -584,6 +591,9 @@ let sidebar_template = {
                     }
                 }, .01)
             }, 500);
+        },
+        openSearchPanel() {
+            this.$emit("openSearchPanel")
         }
     },
     template: ` 
@@ -624,7 +634,14 @@ let sidebar_template = {
                         <h6>Qu'est ce que France services ?</h6>
                         <p>France services est un nouveau modèle de d’accès aux services publics pour les Français. L’objectif est de permettre à chaque citoyen d’accéder aux services publics du quotidien dans un lieu unique : réaliser sa demande de carte grise, remplir sa déclaration de revenus pour les impôts sur internet ou encore effectuer sa demande d’APL. Des agents polyvalents et formés sont présents dans la France services la plus proche de chez vous pour vous accompagner dans ces démarches.</p>
                         <p>France services est un programme piloté par le <a href="https://www.cohesion-territoires.gouv.fr/" target="_blank">ministère de la Cohésion des territoires et des Relations avec les collectivités territoriales</a> via l'Agence nationale de la cohésion des territoires (ANCT).</p>
-                        <h6><a href="https://agence-cohesion-territoires.gouv.fr/france-services-36" target="_blank">En savoir plus sur France services</a></h6>
+                        <button type="button" class="card-btn btn btn-outline-primary btn-home-tab" @click="openSearchPanel">
+                            <i class="las la-search"></i>
+                            Trouver une France services
+                        </button>
+                        <button type="button" class="card-btn btn btn-outline-primary btn-home-tab" @click="window.open('https://agence-cohesion-territoires.gouv.fr/france-services-36')">
+                            <i class="las la-question-circle"></i>
+                            En savoir plus
+                        </button>
                     </div>
                 </div>
                 <div class="leaflet-sidebar-pane" id="search-tab">
@@ -702,7 +719,8 @@ let map_template = {
                      @clearMap="clearMap"
                      @markerToHover="getMarkertoHover" 
                      @bufferRadius="updateBuffer" 
-                     @searchResult="getSearchResult">
+                     @searchResult="getSearchResult"
+                     @openSearchPanel="openSearchPanel">
             </sidebar>
             <div id="mapid" ref="map"></div>
         </div>
@@ -972,6 +990,9 @@ let map_template = {
             this.bufferLayer.clearLayers();
             this.adressLayer.clearLayers();
             this.map.flyTo(this.mapOptions.center, this.mapOptions.zoom);
+        },
+        openSearchPanel() {
+            this.sidebar.open('search-tab')
         },
         // check if app is loaded in an iframe
         checkWindowLocation(ifTrue, ifFalse) {
