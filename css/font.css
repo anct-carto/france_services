@@ -9,6 +9,11 @@
 }
 
 @font-face {
+  font-family: 'Marianne-ExtraBold';
+  src: url('fonts/Marianne-ExtraBold.woff2');
+}
+
+@font-face {
   font-family: 'Abel-Bold';
   src: url('fonts/Abel-Pro-Bold.otf');
 }
