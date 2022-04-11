@@ -6,11 +6,12 @@ Lien direct : https://anct-carto.github.io/france_services
 
 ## Présentation
 
-L'annuaire cartographique France services permet aux utilisateurs de trouver, pour une adresse donnée, les structures les plus proches de chez eux et d'affiner les résultats selon une distance de recherche. Une recherche par département est également proposer pour avoir accès l'ensemble des France services d'un département donné. 
+L'annuaire cartographique France services permet aux utilisateurs de trouver, pour une adresse donnée, les structures les plus proches de chez eux et d'affiner les résultats selon une distance de recherche. Une recherche par département est également proposée pour permettre de connaitre l'ensemble des France services présentes au sein d'un département donné. 
 
 ## Données
-Les données diffusées sur cette carte sont collectées, traitées et maintenues à jour de manière régulière, conjointement par l'ANCT et la Banque des Territoires, sur la base des informations renseignées par les agents présents au sein même des Frances services. 
-Les données sont diffusées sous licence Ouverte 2.0 sur la page data-gouv de l'ANCT : https://www.data.gouv.fr/fr/datasets/liste-des-structures-france-services/ 
+Les données présentées sur cette carte sont collectées, traitées et maintenues à jour de manière régulière, conjointement par l'ANCT et la Banque des Territoires, sur la base des informations renseignées par les agents présents au sein même des Frances services. 
+
+Les données sont diffusées sous licence Ouverte Étalab 2.0 sur la page data-gouv de l'ANCT : https://www.data.gouv.fr/fr/datasets/liste-des-structures-france-services/ 
 
 
 ## En savoir plus sur le programme
