@@ -19,8 +19,13 @@
     <!-- dependances -->
     <!-- vue, leaflet -->
     <script src="lib/vue.min.js"></script>
+    <script src="lib/vue-router.min.js"></script>
     <script src="lib/leaflet.js"></script>
-    <script src="lib/vue-html-to-paper.js"></script>
+    <!-- pdf -->
+    <script src="lib/purify.min.js"></script>
+    <script src="lib/html2canvas.min.js"></script>
+    <script src="lib/jspdf.umd.min.js"></script>
+    <script src="lib/Marianne-Regular-normal.js"></script>
     <!-- bootstrap -->
     <script src="lib/jquery.min.js"></script>
     <script src="lib/bootstrap.bundle.min.js"></script>
@@ -29,12 +34,12 @@
     <script src="lib/leaflet-sidebar.min.js"></script>
     <script src="lib/Leaflet.fullscreen.min.js"></script>
     <script src="lib/L.Control.ZoomMin.js"></script>
+    <script src="lib/leaflet.mask.js"></script>
     <!-- turfjs -->
     <script src='lib/turf.min.js'></script>
   </head>
   <body>
     <div class="w-100 h-100 d-flex flex-column justify-content-center align-items-center" id = "loading">
-      <!-- <img src="img/logo_FranceServices-01.png" style="width:200px;background-color: white;"> -->
       <div class="row">
         <div class="spinner-border" role="status">
           <p class="sr-only">Loading...</p>
@@ -44,8 +49,13 @@
         <p>Chargement des données en cours ...</p>
       </div>
     </div>
+    <!-- <div class="w-100 h-100 d-flex flex-column justify-content-center align-items-center" id = "error" style="display:none">
+      <div class="row">
+        <p>Une erreur technique est survenue. Veuillez réessayer dans quelques minutes</p>
+      </div>
+    </div> -->
     <div id="app">
-      <leaflet-map ref="map"></leaflet-map>
+      <router-view></router-view>
     </div>
     <!-- chargement script js -->
     <script src= "src/app.js"></script>

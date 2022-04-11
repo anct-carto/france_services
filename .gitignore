@@ -11,3 +11,7 @@ package-lock.json
 /nodes_modules
 /data_init
 .Rproj.user
+Thumbs.db
+.gitignore
+changelog.txt
+ressources.txt

@@ -1,13 +1,23 @@
+/*
+    Annuaire cartographique France services v2.1
+    Hassen Chougar / ANCT service cartographie
+    dependances : Leaflet v1.0.7, vue v2.6.12, vue-router v4.0.5, bootstrap v4.6.0, papaparse v5.3.1
 
+*/
 
 // geocode
 const api_adresse = "https://api-adresse.data.gouv.fr/search/?q=";
-const api_admin = "https://geo.api.gouv.fr/departements?nom=";
+const api_admin = "https://geo.api.gouv.fr/departements?";
 
 const loading = document.getElementById("loading");
 
-//let data_url = "https://docs.google.com/spreadsheets/d/1_i0-v9EOrFhEiHQSk6wdBFpsfaAU0oxjm-pEhviJdxM/edit?usp=sharing"
-let data_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuDOzH3iy8ZNpDJiXHLyILhTgmEdeJUa7GicPR7QdEngN6d4jPMFvfERkVOTN0qal96k5aeGXtxMzA/pub?output=csv"
+const url = new URL(window.location.href);
+const params = url.searchParams;
+const qtype = params.get("qtype");
+
+// window.googleDocCallback = function () { return true; };
+// const data_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuDOzH3iy8ZNpDJiXHLyILhTgmEdeJUa7GicPR7QdEngN6d4jPMFvfERkVOTN0qal96k5aeGXtxMzA/pub?output=csv&callback=googleDocCallback"
+const data_url = "https://www.data.gouv.fr/fr/datasets/r/afc3f97f-0ef5-429b-bf16-7b7876d27cd4"
 let fs_tab_fetched = [];
 let page_status;
 
@@ -16,20 +26,22 @@ function init() {
     Papa.parse(data_url, {
         download: true,
         header: true,
+        skipEmptyLines:true,
         complete: (results) => fetchSpreadsheetData(results.data)
     });
-/*    Tabletop.init({
-      key: data_url,
-      callback: fetchSpreadsheetData,
-      simpleSheet: true,
-    })*/
 };
 
 function fetchSpreadsheetData(res) {
     res.forEach(e => { fs_tab_fetched.push(e)});
+    // transformations avant utilisation
     fs_tab_fetched.forEach(e => {
         e.itinerance = e["itinerance"].toLowerCase();
-        if(e.itinerance == "non") {
+        if(e.id_fs) {
+            e.matricule = e.id_fs;
+            e.departement = e.insee_dep
+        }
+        
+        if(e.itinerance == "non" || e.itinerance == "") {
             if(e.format_fs == "Espace labellisé") {
                 e.type = "Siège";
             } else if(e.format_fs == "Antenne") {
@@ -41,9 +53,9 @@ function fetchSpreadsheetData(res) {
     });
     /* filter on lines with latlng */
     fs_tab_fetched = fs_tab_fetched.filter(e => {
-        return e.latitude != "" & e.longitude != ""
+        return e.latitude != 0 & e.latitude != "" & e.longitude != 0 & e.longitude != ""
     });
-    sessionStorage.setItem("session_local", JSON.stringify(fs_tab_fetched))
+    sessionStorage.setItem("session_local", JSON.stringify(fs_tab_fetched));
     loading.remove();
     page_status = "loaded";
 };
@@ -53,35 +65,56 @@ const print_options = {
     name: '_blank',
     specs: [
       'fullscreen=yes',
-      'titlebar=yes',
-      'scrollbars=yes'
+      'titlebar=no',
+      'scrollbars=no'
     ],
     styles: [
         "lib/line-awesome-1.3.0/css/line-awesome.min.css",
-        "https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css",
+        "lib/bootstrap.min.css",
+        "lib/bootstrap.min.css.map",
         "css/style.css",
         "css/font.css"  
     ]
-  };
+};
 
-Vue.use(VueHtmlToPaper, print_options);
 
+
+
+// ****************************************************************************
+
+// Loading screen
+let loadingScreen = {
+    template:`
+        <div>
+            <div class="w-100 h-100 d-flex flex-column justify-content-center align-items-center" id = "loading">
+                <div class="row">
+                    <div class="spinner-border" role="status">
+                        <p class="sr-only">Loading...</p>
+                    </div>
+                </div>
+                <div class="row">
+                    <p>Chargement des données en cours ...</p>
+                </div>
+            </div>
+        </div>
+    `
+};
 
 
 // ****************************************************************************
 
 
 
-let search_group_template = {
+let searchGroupComponent = {
     template: `
             <div id="search-bar-container">
                 <div id = "search-type-group">
                     <span id="search-type-text">Rechercher par :</span>
                     <div class="btn-group btn-group-toggle" id="search-type-radio" data-toggle="buttons">
-                        <label class="search-type-btn btn btn-outline-primary active">
+                        <label class="search-type-btn btn btn-outline-primary active" aria-label="Rechercher une adresse" title="Rechercher une adresse">
                             <input type="radio" name="address" id="adresse-btn" @click="onChange($event)" checked>Adresse
                         </label>
-                        <label class="search-type-btn btn btn-outline-primary">
+                        <label class="search-type-btn btn btn-outline-primary" aria-label="Rechercher un département" title="Rechercher un département">
                             <input type="radio" name="admin" id="dep-btn" @click="onChange($event)">Département
                         </label>
                     </div>
@@ -104,6 +137,7 @@ let search_group_template = {
                         @click="onClickSuggest(suggestion)"
                         @keydown.esc="isOpen=false"
                         @mouseover="onMouseover(i)"
+                        @mouseout="onMouseLeave"
                         :class="{ 'is-active': i === index }">
                         <div v-if="searchType === 'address'">
                             <span class="search-result-label">
@@ -141,7 +175,14 @@ let search_group_template = {
             if(this.searchType == "address") {
                 return "Saisissez une adresse ..."
             } else {
-                return "Saisissez un nom de département ..."
+                return "Saisissez un nom ou code de département ..."
+            }
+        },
+        searchType() {
+            if(qtype == 'address' || qtype == 'admin') {
+                return qtype
+            } else {
+                return 'address'
             }
         }
     },
@@ -151,16 +192,31 @@ let search_group_template = {
                 this.isOpen = !this.isOpen;
                 this.index = 0;
                 this.suggestionsList = [];
-                // this.$emit('searchResult',' ') // reinitialize map
             }
         }
     },
+    mounted() {
+        document.addEventListener("click", this.handleClickOutside);
+        document.addEventListener("keyup", (e) => {
+            if(e.key === "Escape") {
+                this.isOpen = false;
+                this.index = -1;
+
+            }
+        });
+        
+    },
+    destroyed() {
+        document.removeEventListener("click", this.handleClickOutside);
+        document.removeEventListener("keyup", (e) => {
+            if(e.key === "Escape") {
+                this.isOpen = false;
+                this.index = -1
+                this.handleClickOutside();
+            }
+        });
+    },
     methods: {
-        onChange(e) {
-            this.searchType = e.target.name;
-            //this.isOpen = !this.isOpen;
-            this.inputAdress = '';
-        },
         returnType(type) {
             switch (type) {
                 case "housenumber":
@@ -171,20 +227,21 @@ let search_group_template = {
                     return type = "Lieu-dit";
                 case "municipality":
                     return type = "Commune";
-                    break;
             };
+        },
+        onChange(e) {
+            this.searchType = e.target.name;
+            this.inputAdress = '';
+            this.$emit('searchType', this.searchType)
         },
         onKeypress(e) {
             this.isOpen = true;
             let val = this.inputAdress;
             
-            if(val === '') {
-                this.isOpen = false;                
-            };
-
+            if(val === '') { this.isOpen = false; };
             if (val != undefined && val != '') {
                 if(this.searchType == 'address') {
-                    fetch(api_adresse.concat(val, "&autocomplete=1"))
+                    fetch(`${api_adresse}${val}&autocomplete=1`)
                         .then(res => res.json())
                         .then(res => {
                             let suggestions = [];
@@ -196,9 +253,16 @@ let search_group_template = {
                                 });
                             };
                             this.suggestionsList = suggestions;
-                        }).catch(error => console.throw(error));
+                        }).catch(error => console.error(error));
                 } else if(this.searchType == 'admin') {
-                    fetch(api_admin.concat(val,"&limit=5"))
+                    let field;
+                    let number = val.match(/\d+/);
+                    if(number) {
+                        field = "code="
+                    } else {
+                        field = "nom="
+                    };
+                    fetch(`${api_admin}${field}${val}&autocomplete=1&limit=5`)
                     .then(res => res.json())
                     .then(res => {
                         let suggestions = [];
@@ -208,7 +272,7 @@ let search_group_template = {
                             });
                         };
                         this.suggestionsList = suggestions;
-                    }).catch(error => console.throw(error));
+                    }).catch(error => console.error(error));
                 }
             }
         },
@@ -224,6 +288,9 @@ let search_group_template = {
         },
         onMouseover(e) {
             this.index = e;
+        },
+        onMouseLeave() {
+            this.index = -1;
         },
         onEnter() {
             this.isOpen = !this.isOpen;
@@ -267,7 +334,8 @@ let search_group_template = {
                 // send data
                 this.$emit("searchResult", {
                     resultType:'dep',
-                    resultCode:suggestion.code
+                    resultCode:suggestion.code,
+                    resultNom:suggestion.nom
                 });                
             }
             
@@ -283,51 +351,231 @@ let search_group_template = {
         },
         clearSearch() {
             this.inputAdress = '';
+            document.getElementById("search-field").value = "";
             this.$emit('clearSearch')
         }
     },
-    mounted() {
-        document.addEventListener("click", this.handleClickOutside);
-        document.addEventListener("keyup", (e) => {
-            if(e.key === "Escape") {
-                this.isOpen = false;
-                this.index = -1;
-
-            }
-        });
-        
-    },
-    destroyed() {
-        document.removeEventListener("click", this.handleClickOutside);
-        document.removeEventListener("keyup", (e) => {
-            if(e.key === "Escape") {
-                this.isOpen = false;
-                this.index = -1
-                this.handleClickOutside();
-            }
-        });
-    }
-
 };
+
+
+
+
+// FICHE PDF ****************************************************************************
+
+window.jsPDF = window.jspdf.jsPDF
+
+let pdfComponent = {
+    computed: {
+        fs() {
+            return this.$route.params.fs
+        },
+        tooltipType() {
+            let type = this.fs.type;
+            if(type === "Siège") {
+                return 'siege'
+            } else if(type === "Antenne") {
+                return 'antenne'
+            } else if(type === "Bus") {
+                return 'bus'
+            }
+        },
+        date() {
+            let todayDate = new Date(Date.now());
+            return todayDate.toLocaleDateString()
+        }
+    },
+    mounted() {
+        let fs = this.fs;
+        let coords = [fs.latitude,fs.longitude];
+        let map = new L.map('map-pdf', {
+            center: [params.get("lat") || 46.413220, params.get("lng") || 1.219482],
+            zoom:params.get("z") || defaultZoomLevel,
+            preferCanvas: true,
+            zoomControl:false
+        }).setView(coords,16);
+        
+        
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
+            attribution: '<a href="https://agence-cohesion-territoires.gouv.fr/" target="_blank">ANCT</a> | Fond cartographique &copy;<a href="https://stadiamaps.com/">Stadia Maps</a> &copy;<a href="https://openmaptiles.org/">OpenMapTiles</a> &copy;<a href="http://openstreetmap.org">OpenStreetMap</a>',
+        }).addTo(map);
+
+        L.control.scale({ position: 'bottomright', imperial:false }).addTo(map);
+
+        // let tooltipContent = `
+        // <span class='leaflet-tooltip-header ${this.tooltipType}'>${fs.lib_fs}</span>
+        // <span class='leaflet-tooltip-body'>${fs.code_postal} ${fs.lib_com}</span>`;
+
+        new L.marker(coords, {
+            icon: L.icon({
+                iconUrl: './img/picto_siege.png',
+                iconSize: [40, 40],
+                iconAnchor: [20, 40]
+            })
+        }).addTo(map)
+
+        setTimeout(() => {
+            let router = this.$router;
+
+            let pdf = new jsPDF('p','mm',[210,297]);
+            pdf.setFont("Marianne-Regular");
+            
+            let htmlToPrint = this.$el;
+
+            let outputFileName = 'france-services-fiche-' + this.fs.matricule + '.pdf'
+            
+            pdf.html(htmlToPrint, {
+                margin:[5,16,0,16],
+                html2canvas: {
+                    scale:0.25
+                },
+                callback:function(pdf) {
+                    pdf.save(outputFileName)
+                    router.push({path:'/'})
+                }
+            });
+        }, 500);
+    },
+    template:`
+        <div class="container-sm" id="fiche-pdf">
+        <div class="row">
+                <div class="header-pdf-logos">
+                    <img src="img/logo_rf.jpg" class="logo-rf">
+                    <img src="img/logo_FranceServices_sans-marianne-01.jpg" class="logo-fs">
+                </div>
+                <div class="col-11 p-0">
+                    <span style="font-size:.8em">Fiche d'information France services - données extraites le {{ date }}</span>
+                    <h2 style='font-weight:bolder'><b>{{ fs.lib_fs }}</b></h2><br>
+                    <div class = "intro">
+                        <p v-if="fs.itinerance=='oui'">
+                            <span>Attention : cette France services est en itinérance</span>
+                        </p>
+                        <p>
+                            Immatriculation de véhicules, RSA, impôt, permis de conduire, accès aux services en ligne... Vous avez besoin d’aide pour vos démarches administratives ? Quel que soit l’endroit où vous vivez, en ville ou à la campagne, France services est un guichet unique qui donne accès dans un seul et même lieu aux principaux organismes de services publics : le ministère de l'Intérieur, le ministère de la Justice, les Finances publiques, Pôle emploi, l'Assurance retraite, l'Assurance maladie, la CAF, la MSA et la Poste.</p>
+                        <p>
+                            Retrouvez la France services la plus proche de chez vous sur <a href="france-services.gouv.fr" target="_blank">france-services.gouv.fr</a> 
+                        </p>
+                        <div class="row">
+                            <div class="col-6">
+                                <h5>
+                                    <!--<i class = "las la-map-marker"></i>-->
+                                    <b>Adresse</b>
+                                </h5>
+                                <div>
+                                    <span>
+                                        {{ fs.adresse }} <br>
+                                    </span>
+                                    <span v-if = "fs.complement_adresse.length">
+                                        {{ fs.complement_adresse }}<br>
+                                    </span>
+                                    <span>
+                                        {{ fs.code_postal }} {{ fs.lib_com }}
+                                    </span>
+                                </div><br>
+                                <div>
+                                    <p>
+                                        <h5>
+                                            <!--<i class = "las la-clock"></i>-->
+                                            <b>Horaires d'ouverture</b>
+                                        </h5>
+                                        <ul style="list-style: none;display: inline-block;padding-left: 5px;">
+                                            <li>
+                                                <b>Lundi : </b>{{ fs.h_lundi }} 
+                                            </li>
+                                            <li>
+                                                <b>Mardi : </b>{{ fs.h_mardi }} 
+                                            </li>
+                                            <li>
+                                                <b>Mercredi : </b>{{ fs.h_mercredi }} 
+                                            </li>
+                                            <li>
+                                                <b>Jeudi : </b>{{ fs.h_jeudi }} 
+                                            </li>
+                                            <li>
+                                                <b>Vendredi : </b>{{ fs.h_vendredi }} 
+                                            </li>
+                                            <li>
+                                                <b>Samedi : </b>{{ fs.h_samedi }} 
+                                            </li>
+                                        </ul>
+                                    </p>
+                                    <h5>
+                                        <!--<i class = "las la-phone"></i>-->
+                                        <b>Contact</b>
+                                    </h5>
+                                    <span v-if = "fs.telephone"><b>Téléphone : </b>{{ fs.telephone }}</span><br>
+                                    <span v-if = "fs.mail"><b>Courriel : </b><a v-bind:href = "'mailto:' + fs.mail" target = "_blank">{{ fs.mail }}</a></span>
+                                </div><br>
+                            </div>
+                            <div class="col-6">
+                                <div id="map-pdf"></div>
+                            </div>
+                        </div>
+                    </div><br>
+                    <div class="corps">
+                        <div v-if="fs.commentaire_horaires">
+                            <!--<i class = "las la-info-circle"></i>-->
+                            <h5><b>Commentaire(s)</b></h5>
+                            <span>{{ fs.commentaire_horaires }}</span>
+                        </div>
+                    </div>
+                 </div>
+            </div>
+        </div>
+    `
+};
+
+
+// ****************************************************************************
+
+let cardControlBtn = {
+    props:["icon","text"],
+    data() {
+        return {
+            show:false
+        }
+    },
+    template: `
+        <button type="button" class="card-action-btn action btn btn-outline-primary btn" 
+                @click="event.stopPropagation()" 
+                @mouseover="show=true" @mouseleave="show=false"
+                aria-label=""
+                title="">
+            <i :class="'las la-'+icon"></i>
+            <span v-if="show" @mouseover="show=true" @mouseout="show=false">{{ text }}</span>
+        </button>
+
+    `
+};
+
 
 // ****************************************************************************
 
 
-let card_template = {
+let cardTemplate = {
     props: ['fs', 'cardToHover', 'collapse'],
     data () {
       return {
         showInfo:false,
-        hoverStyle:''
+        hoverStyle:'',
+        clicked:false,
+        showTooltip:false,
       }
     },
+    components: {
+        'control-btn':cardControlBtn
+    },
     mounted() {
-        // control collapsing : if only one card on side panel than collapse = true else false
-        if(this.collapse == true) {
+        // control collapsing : if only one card is on side panel than collapse = true else false
+        if(this.collapse == true || params.get('qtype') == "click") {
             this.showInfo = true
         } else {
             this.showInfo = this.showInfo;
         }
+        document.addEventListener("selectionchange",event=>{
+            // this.showInfo = false;
+            // let selection = document.getSelection ? document.getSelection().toString() :  document.selection.createRange().toString() ;
+            // console.log(selection);
+        })
     },
     methods: {
         getClass() {
@@ -357,18 +605,41 @@ let card_template = {
             this.$emit('hoverOnMap', '');
         },
         zoomOnMap() {
-            this.showInfo = false;
+            event.stopPropagation();
             map = this.$parent.map;
             map.flyTo([this.fs.latitude, this.fs.longitude],16, {
-                duration:3,
+                duration:1,
+            });
+        },
+        flyOnMap() {
+            event.stopPropagation();
+            map = this.$parent.map;
+            map.panTo([this.fs.latitude, this.fs.longitude], {
+                duration:1,
             });
         },
         print(fs) {
-            id = fs.matricule;
+            let id = fs.matricule;
             this.$htmlToPaper(id);
-        }
+        },
+        getPdf() {
+            matricule = this.fs.matricule;
+            this.$router.push({name: 'fiche', params: { matricule: matricule, fs:this.fs }});
+        },
+        copyLink() {
+            event.stopPropagation()
+            let linkToShare = `${url.origin}/france_services/?qtype=click&matricule=${this.fs.matricule}`;
+            navigator.clipboard.writeText(linkToShare);
+            // let copiedTooltip = document.getElementsByClassName("copied-tooltip")[0];
+            this.showTooltip = true;
+        },
+        tooltipOff() {
+            this.showTooltip = false;
+        },
     },
     template: `<div class="card result-card"
+                    aria-label="Cliquer pour afficher plus d'informations"
+                    title="Cliquer pour afficher plus d'informations"
                     :id="fs.matricule"
                     @click="showInfo = !showInfo" 
                     :class="getHoveredCard()" 
@@ -379,7 +650,7 @@ let card_template = {
                       <i :class="getFontIcon()"></i> 
                       <span class="card-header-left">{{ fs.lib_fs }}</span>
                       <span class="distance" v-if="fs.distance">
-                          <i class = "las la-map-marker"></i> 
+                          <i class = "las la-map-marker"></i>
                           {{ fs.distance }} km
                       </span>                      
                   </div>
@@ -407,10 +678,6 @@ let card_template = {
                         </ul>
                     </p>
                   </div>
-                  <!--<span v-if="showInfo==false" class="collapse-text">
-                    <i class = "las la-arrow-down" v-if = "fs.telephone.length"></i>
-                    Cliquer pour afficher plus d'informations
-                  </span>-->
                   <div class="corps" v-show="showInfo">
                     <p v-if = "fs.telephone">
                       <i class = "las la-phone"></i>
@@ -426,7 +693,7 @@ let card_template = {
                     </p>
                     <p>
                         <i class = "las la-clock"></i>
-                        <ul><b>Horaires d'ouverture</b>
+                        <ul>
                             <li>
                                 <b>Lundi : </b>{{ fs.h_lundi }} 
                             </li>
@@ -446,7 +713,7 @@ let card_template = {
                                 <b>Samedi : </b>{{ fs.h_samedi }} 
                             </li>
                         </ul>
-                        </p>
+                    </p>
                     <p v-if="fs.commentaire_horaires">
                         <i class = "las la-info-circle"></i>                    
                         <ul>
@@ -458,14 +725,12 @@ let card_template = {
                         Cette structure fait partie du réseau "{{ fs.groupe }}"
                     </p>
                     <div class="card-controls">
-                        <button type="button" class="card-btn btn btn-outline-primary btn-block" @click="zoomOnMap">
-                            <i class="las la-search-plus"></i>
-                            Zoom sur la carte
-                        </button>
-                        <button type="button" class="card-btn btn btn-outline-primary btn-block" @click="print(fs)">
-                            <i class="las la-print"></i>
-                            Imprimer la fiche
-                        </button>
+                        <control-btn :icon="'search-plus'" :text="'Zoom'" @click.native="zoomOnMap"></control-btn>
+                        <control-btn :icon="'arrows-alt'" :text="'Déplacer sur'" @click.native="flyOnMap"></control-btn>
+                        <!--<control-btn :icon="'print'" :text="'Imprimer'" @click.native="print(fs)"></control-btn>-->
+                        <control-btn :icon="'file-pdf'" :text="'Télécharger'" @click.native="getPdf"></control-btn>
+                        <control-btn :icon="'clipboard'" :text="'Partager'" @click.native="copyLink" @mouseout.native="tooltipOff"></control-btn>
+                        <span class="copied-tooltip" v-if="showTooltip">Lien copié!</span>
                     </div>
                   </div>
                 </div>
@@ -498,21 +763,121 @@ let cardNumber = {
                         <span>{{ text }}</span>
                     </div>
                 </div>`
-}
+};
+
 
 // ****************************************************************************
 
-let sidebar_template = {
-    components: {
-        'search-group':search_group_template,
-        'card':card_template,
-        'card-number':cardNumber,
+
+
+
+// ****************************************************************************
+
+
+let sliderComponent = {
+    data() {
+        return {
+            radiusVal:'',
+            minRadiusVal:0,
+            maxRadiusVal:50
+        }
     },
-    props: ['fromParent', 'cardToHover', 'nbFs'],
+    watch: {
+        radiusVal() {
+            let bubble = this.$refs.bubble;
+            const val = this.radiusVal;
+            const min = this.minRadiusVal;
+            const max = this.maxRadiusVal;
+            let pctValue = Number((val-min)*100/(max-min));
+
+            bubble.style.left = `calc(${pctValue}% + (${5 - pctValue * 0.6}px))`;
+        }
+    },
+    mounted() {
+        if(params.has("qr")) {
+            this.radiusVal = params.get("qr");
+        } else {
+            this.radiusVal = 10;
+        };
+        this.emitRadius();
+        
+    },
+    methods: {
+        emitRadius() {
+                if(params.has("qlatlng")) {
+                    params.set("qr",this.radiusVal);
+                    window.history.pushState({},'',url);
+                };
+            this.$emit("radiusVal",this.radiusVal);      
+        },
+    },
+    template:`
+        <div id="range-slider-group">
+            <span for="customRange1" class="form-label" style="font-size:1.1em;">Rayon de recherche à vol d'oiseau : </span><br>
+            <span id="input-thumb" ref="bubble">{{ radiusVal }} km</span>
+            <input type="range" class="form-range" 
+                   id="distance-slider" 
+                   v-model="radiusVal" 
+                   @change="emitRadius" 
+                   min="minRadiusVal" max="50" step="0.2">
+        </div><br>
+    `
+};
+
+
+// ****************************************************************************
+
+let resultsCountComponent = {
+    props:['nbResults','type'],
+    computed: {
+        styleSheet() {
+            return {
+                background:this.color
+            }
+        },
+        color() {
+            switch (this.type) {
+                case "siege":
+                    return "rgb(41,49,115)";
+                case "bus":
+                    return "#00ac8c";
+                case "antenne":
+                    return "#5770be";
+            }
+        },
+        text() {
+            switch (this.type) {
+                case "siege":
+                    return 'fixe';
+                case "bus":
+                    return "itinérante";
+                case "antenne":
+                    return "antenne";
+            }
+        }
+    },
+    template: `
+        <span class="nb-result-per-type" :style="styleSheet">
+            <b>{{ nbResults }}</b> {{ text }}<span v-if="nbResults>1">s</span>
+        </span>
+    `
+}
+
+
+// ****************************************************************************
+
+let sidebarComponent = {
+    components: {
+        'search-group':searchGroupComponent,
+        'card':cardTemplate,
+        'card-number':cardNumber,
+        'slider':sliderComponent,
+        'result-count':resultsCountComponent,
+    },
+    props: ['fromParent', 'cardToHover', 'nbFs','searchTypeFromMap'],
     data() {
         return {
             show:false,
-            nbResults: '',
             hoveredCard:'',
             searchResult:'',
             searchType:'address',
@@ -522,29 +887,24 @@ let sidebar_template = {
         map() {
             return this.$parent.map;
         },
-        filteredList() {
-            return this.fromParent.slice(0, this.nbResults)
-        },
-        collapse() {
-            if(this.fromParent.length>1) {
-                return false
-            } else {
-                return true
-            };
+        nbResults() {
+            return {
+                siege:this.countResultByType("Siège"),
+                bus:this.countResultByType("Bus"),
+                antenne:this.countResultByType("Antenne")
+            }
         }
     },
     watch: {
         fromParent() {
             this.show = true;
-            // switch between searchType (adresse ou departement) to display all results or not
-            if(this.searchType == 'address') {
-                this.nbResults = 5;
-            } else if (this.searchType == 'dep') {
-                this.nbResults = this.fromParent.length;
-            };
+            this.collapse = false;
         },
         cardToHover(card_id) {
             hoveredCard = card_id;
+        },
+        searchTypeFromMap(value) {
+            this.searchType = value;
         }
     },
     methods: {
@@ -552,17 +912,13 @@ let sidebar_template = {
             final_count = this.nbFs.filter(e => {
                 return e.type == category
             }).length;
-            return final_count
+            return final_count;
         },
-        showMore() {
-            if(this.nbResults <20) {
-                this.nbResults += 5;
-                // get farest point distance ...
-                let index = this.nbResults -1;
-                // ... to extand buffer on map
-                buffer_radius = this.filteredList[index].distance*1000;
-                this.$emit('bufferRadius', buffer_radius);
-            }
+        countResultByType(type) {
+            let nb = this.fromParent.filter(e => {
+                return e.type == type
+            }).length;
+            return nb
         },
         getHoveredCard(id) {
             if(id) {
@@ -574,10 +930,17 @@ let sidebar_template = {
         getSearchResult(result) {
             // emit search result from child to parent (map)
             this.$emit("searchResult",result);
-            this.searchType = result.resultType;
+            this.searchResult = result;
+            // this.searchType = result.resultType;
+        },
+        getSearchType(e) {
+            this.searchType = e;
         },
         clearSearch() {
             this.$emit('clearMap');
+        },
+        zoomOnResults() {
+            this.$emit('zoomOnResults')
         },
         countNbCategory(number,category) {
             setTimeout(() => {
@@ -592,9 +955,12 @@ let sidebar_template = {
                 }, .01)
             }, 500);
         },
+        radiusVal(e) {
+            this.$emit('bufferRadius',e);
+        },
         openSearchPanel() {
             this.$emit("openSearchPanel")
-        }
+        },
     },
     template: ` 
         <div id="sidebar" class="leaflet-sidebar collapsed">
@@ -625,14 +991,12 @@ let sidebar_template = {
                         <div class="header-logo">
                             <img src="img/logo_FranceServices-01.png" id="programme-logo">
                         </div>
-                        <!--
-                        <div class="row">
+                        <!--<div class="row">
                             <card-number :nb="fsCounter('Siège')" :category="'Siège'" text="structures"></card-number>
                             <card-number :nb="fsCounter('Antenne')" :category="'Antenne'" text="antennes"></card-number>
                             <card-number :nb="fsCounter('Bus')" :category="'Bus'" text="bus"></card-number>
                         </div>-->
-                        <h6>Qu'est ce que France services ?</h6>
-                        <p>France services est un nouveau modèle de d’accès aux services publics pour les Français. L’objectif est de permettre à chaque citoyen d’accéder aux services publics du quotidien dans un lieu unique : réaliser sa demande de carte grise, remplir sa déclaration de revenus pour les impôts sur internet ou encore effectuer sa demande d’APL. Des agents polyvalents et formés sont présents dans la France services la plus proche de chez vous pour vous accompagner dans ces démarches.</p>
+                        <p>France services est un nouveau modèle d’accès aux services publics pour les Français. L’objectif est de permettre à chaque citoyen d’accéder aux services publics du quotidien dans un lieu unique : réaliser sa demande de carte grise, remplir sa déclaration de revenus pour les impôts sur internet ou encore effectuer sa demande d’APL. Des agents polyvalents et formés sont présents dans la France services la plus proche de chez vous pour vous accompagner dans ces démarches.</p>
                         <p>France services est un programme piloté par le <a href="https://www.cohesion-territoires.gouv.fr/" target="_blank">ministère de la Cohésion des territoires et des Relations avec les collectivités territoriales</a> via l'Agence nationale de la cohésion des territoires (ANCT).</p>
                         <button type="button" class="card-btn btn btn-outline-primary btn-home-tab" @click="openSearchPanel">
                             <i class="las la-search"></i>
@@ -652,31 +1016,49 @@ let sidebar_template = {
                         </span>
                     </div>
                     <div>
-                        <search-group @searchResult="getSearchResult" @clearSearch="clearSearch"></search-group>
-                        <div id="search-results-header">
-                            <span id="nb-results" v-if="filteredList.length>1">
-                                <b>{{ filteredList.length }}</b> résultats
-                            </span>
-                            <span id="text-distance" v-if="filteredList.length>1 && searchType=='address'">
-                                Les distances sont calculées à vol d'oiseau
-                            </span>
+                        <div id="search-inputs">
+                            <search-group @searchResult="getSearchResult" @searchType="getSearchType" @clearSearch="clearSearch" ref="searchGroup"></search-group>
+                            <hr/>
+                            <slider @radiusVal="radiusVal" v-if="params.get('qtype')=='address'"></slider>
                         </div>
-                        <div id="results">
+                        <div id="search-results-header" v-if="fromParent.length>0">
+                            <span id="nb-results" v-if="params.get('qtype')!='click'">
+                                <b>{{ fromParent.length }}</b> résultat<span v-if="fromParent.length>1">s</span>
+                            </span>
+                            <button class="card-btn action btn btn-outline-primary btn"
+                                    style='float:right;margin-top:5px'
+                                    @click="zoomOnResults"
+                                    v-if="params.get('qtype')!='click'">
+                                <i class="las la-compress-arrows-alt"></i>
+                                Voir les résultats
+                            </button>
+                        </div>
+                        <div id="results" v-if="fromParent.length >0">
+                            <div style="margin-bottom:15px" v-if="params.get('qtype')!='click'">
+                                <result-count :nbResults="nbResults.siege" 
+                                            :type="'siege'" 
+                                            v-if="nbResults.siege">
+                                </result-count>
+                                <result-count :nbResults="nbResults.bus" 
+                                            :type="'bus'" 
+                                            v-if="nbResults.bus">
+                                </result-count>
+                                <result-count :nbResults="nbResults.antenne"
+                                            :type="'antenne'" 
+                                            v-if="nbResults.antenne">
+                                </result-count>
+                            </div>
                             <card v-if="show"
-                                v-for="(fs, index) in filteredList"
+                                v-for="(fs, index) in fromParent"
                                 :collapse="collapse"
                                 :fs="fs" :key="index"
                                 :cardToHover="cardToHover"
                                 @hoverOnMap="getHoveredCard">
                             </card>
                         </div>
-                        <div class="show-more-btn">
-                            <button type="button" class="btn btn-link show-more-btn" 
-                            v-if="filteredList.length>1 && filteredList.length<20 && searchType=='address'"
-                            v-on:click="showMore">
-                                    Afficher plus de résultats
-                            </button>
-                        </div>
+                        <p style="text-align:center"v-if="Array.isArray(fromParent) & fromParent.length==0">
+                            <br>Aucun résultat ... Veuillez ajuster le rayon de recherche
+                        </p>
                     </div>
                 </div>
                 <div class="leaflet-sidebar-pane" id="a-propos">
@@ -706,47 +1088,53 @@ let sidebar_template = {
 };
 
 
+// ****************************************************************************
+
 // init vue-leaflet
 
 let markerToHover;
 
-let map_template = {
+let mapComponent = {
     template: `
         <div>
             <sidebar :fromParent="fs_cards" 
                      :cardToHover="hoveredMarker"
                      :nbFs="data"
-                     @clearMap="clearMap"
+                     :searchTypeFromMap="searchType"
                      @markerToHover="getMarkertoHover" 
                      @bufferRadius="updateBuffer" 
                      @searchResult="getSearchResult"
-                     @openSearchPanel="openSearchPanel">
+                     @openSearchPanel="openSearchPanel"
+                     @zoomOnResults="zoomOnResults"
+                     @clearMap="clearMap"
+                     ref="sidebar">
             </sidebar>
             <div id="mapid" ref="map"></div>
         </div>
     `,
+    components: {
+        'sidebar': sidebarComponent,
+    },
     data() {
         return {
             mapOptions: {
                 url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                attribution: '<a href="https://cartotheque.anct.gouv.fr/cartes" target="_blank">ANCT</a> | Fond cartographique &copy;<a href="https://stadiamaps.com/">Stadia Maps</a> &copy;<a href="https://openmaptiles.org/">OpenMapTiles</a> &copy;<a href="http://openstreetmap.org">OpenStreetMap</a>',
                 zoom: 6,
-                attribution: '<a href="https://agence-cohesion-territoires.gouv.fr/" target="_blank">ANCT</a> | Fond cartographique &copy;<a href="https://stadiamaps.com/">Stadia Maps</a> &copy;<a href="https://openmaptiles.org/">OpenMapTiles</a> &copy;<a href="http://openstreetmap.org">OpenStreetMap</a>',
                 center: [46.413220, 1.219482],
-                zoomSnap: 0.5,
+                zoomSnap: 0.25,
                 zoomControl: false,
-                preferCanvas: true
             },
             data: fs_tab_fetched,
-            circles: {
-                radius:5,
+            circlesStyle: {
+                radius:5.5,
                 color:'white',
-                weight:1,
+                weight:1.2,
                 fillOpacity:1,
                 className:'fs-marker',
             },
             tooltipOptions: {
                 direction:'top',
-                sticky:true,
                 className:'leaflet-tooltip-hovered',
             },
             hoveredMarker:'',
@@ -758,20 +1146,9 @@ let map_template = {
             map:null,
             markerToHover:{
                 coords:'',
-                icon: L.icon({
-                    iconUrl: function(type) {
-                        if(type == "Siège") {
-                            return './img/picto_siege.png'
-                        } else if(type == "Antenne") { 
-                            return './img/picto_antenne.png'
-                        } else if(type == "Bus") {
-                            return './img/picto_itinerante.png'
-                        }
-                    },
-                    iconSize: [32, 32],
-                    iconAnchor: [16, 37]
-                })
             },
+            searchRadius:10,
+            searchType:'',
         }
     },
     computed: {
@@ -782,8 +1159,7 @@ let map_template = {
             if(this.marker) {
                 return L.circle(this.marker, {
                     color:'red',
-                    fillColor:'white',
-                    fillOpacity:0,
+                    fillColor:'rgba(0,0,0,1)',
                     interactive:false
                 })
             }
@@ -791,7 +1167,7 @@ let map_template = {
         clickedMarkerLayer() {
             return L.layerGroup({className:'clicked-marker-layer'}).addTo(this.map);
         },
-        bufferLayer() {
+        maskLayer() {
             return L.layerGroup({className:'buffer-layer'}).addTo(this.map)
         },
         iframe() {
@@ -803,264 +1179,26 @@ let map_template = {
             };
         },
     },
-    components: {
-        'sidebar': sidebar_template,
-    },
-    methods: {
-        initMap() {
-            const map = L.map('mapid', this.mapOptions);
-            this.iframe ? map.setZoom(6) : map.setZoom(5.55);
-            L.tileLayer(this.mapOptions.url,
-                {attribution:this.mapOptions.attribution}).addTo(map);
-            this.map = map;
-            // zoom control, fullscreen & scale bar
-            L.control.zoom({position: 'topright'}).addTo(map);
-            L.control.fullscreen({
-                position:'topright',
-                forcePseudoFullScreen:true,
-                title:'Afficher la carte en plein écran'
-            }).addTo(this.map);
-            L.control.scale({ position: 'bottomright', imperial:false }).addTo(map);
-            // sidebar
-            const sidebar = window.L.control.sidebar({
-                autopan: true, 
-                closeButton: true, 
-                container: "sidebar", 
-                position: "left"
-            }).addTo(map);
-            this.sidebar = sidebar;
-            
-        
-            // legend
-            const legend = L.control({position: 'topright'});
-            
-            legend.onAdd = function (map) {
-                let expand = false;
-                var div = L.DomUtil.create('div', 'leaflet-legend');
-                
-                content_default = "<i class='la la-align-justify'></i>";
-                div.innerHTML += content_default;
-
-                
-                div.addEventListener("click", () => {
-                    if(expand === false) {
-                        expand = true;
-                        // here we can fill the legend with colors, strings and whatever
-                        div.innerHTML = `<span class="leaflet-legend-marker-siege"></span><span> Structure siège</span><br>`;
-                        div.innerHTML += `<span class="leaflet-legend-marker-antenne"></span><span> Antenne</span><br>`;
-                        div.innerHTML += `<span class="leaflet-legend-marker-bus"></span><span> Bus</span><br>`;
-                        div.innerHTML += `<span class="leaflet-legend-perimeter"></span><span> Périmètre de recherche</span>`;
-                    } else if (expand == true) {
-                        expand = false;
-                        div.innerHTML = content_default;
-                    }
-                })
-    
-                return div;
-            };
-            legend.addTo(map);
-        },
-        loadDep() {
-            fetch("data/geom_dep.geojson")
-            .then(res => res.json())
-            .then(res => {
-                this.geom_dep = res
-            });
-        },
-        flyToBoundsWithOffset(layer) {
-            offset = document.querySelector('.leaflet-sidebar-content').getBoundingClientRect().width;
-            this.map.flyToBounds(layer, {paddingTopLeft: [offset, 0]})
-        },
-        onMouseover(fs) {
-            this.markerToHover.coords = [fs.latitude, fs.longitude];
-            this.markerToHover.lib = fs.lib_fs;
-            
-            id = fs.matricule;
-            if(this.fs_cards) {
-                this.hoveredMarker = id; // send hovered marker's ID to children cards 
-            };
-        },
-        onMouseOut() {
-            this.hoveredMarker = '';
-            this.markerToHover.coords = '';
-            this.markerToHover.lib = '';
-            this.getMarkertoHover('');  
-        },
-        displayInfo(fs) {
-            this.sidebar.open('search-tab')
-            
-            // send info of the one clicked point to children (cards)
-            list_fs_cards = [fs];
-            this.fs_cards = list_fs_cards
-            
-            // add white stroke to clicked
-            this.clickedMarkerLayer.clearLayers();
-            let glow = new L.circleMarker([fs.latitude, fs.longitude], {
-                radius:10,
-                color:'rgba(255,255,255,.75',
-                weight:10,
-                fillColor:this.getMarkerColor(fs),
-                fillOpacity:1,
-            })
-            
-            this.clickedMarkerLayer.addLayer(glow);
-
-            // remove buffer and address marker
-            this.bufferLayer.clearLayers()
-            this.adressLayer.clearLayers()
-        },
-        getMarkerColor(fs) {
-            if(fs.type === "Siège") {
-                return "rgb(41,49,115)"
-            } else if(fs.type == "Antenne") {
-                return "#5770be"
-            } else if(fs.type == "Bus") {
-                return "#00ac8c"
-            }
-        },
-        getIconCategory(type) {
-            if(type === "Siège") {
-                return './img/picto_siege.png'
-            // } else {
-            } else if(type === "Antenne"){
-                return './img/picto_antenne.png'
-            } 
-            else if(type === "Bus"){
-                return './img/picto_itinerante.png'
-            }
-        },
-        getTooltipCategory(type) {
-            if(type === "Siège") {
-                return 'leaflet-tooltip-siege'
-            } else if(type === "Antenne") {
-                return 'leaflet-tooltip-antenne'
-            } else if(type === "Bus") {
-                return 'leaflet-tooltip-bus'
-            }
-        },
-        getMarkertoHover(id) {
-            if (id) {
-                fs = this.data.filter(e => {
-                    return e.matricule == id;
-                })[0];
-
-                this.markerToHover.coords =  [fs.latitude, fs.longitude];
-                type = fs.type;
-
-                markerToHover = L.marker(this.markerToHover.coords, {
-                    className:'fs-marker',
-                    icon:L.icon({
-                        iconUrl:this.getIconCategory(type),  
-                        iconSize: [40, 40],
-                        iconAnchor: [20, 40]
-                    })
-                }).addTo(this.map);
-
-                markerToHover.bindTooltip(fs.lib_fs, {
-                    className: this.getTooltipCategory(type),
-                    direction:'top',
-                    sticky:true,
-                }).openTooltip();
-
-            } else {
-                markerToHover.removeFrom(this.map);
-                this.markerToHover.coords = '';
-                this.markerToHover.lib = '';
-            }
-        },
-        getSearchResult(e) {
-            // get result infos emitted from search group
-            if(e.resultType == "address") {
-                this.marker = e.resultCoords;
-                this.marker_tooltip = e.resultLabel;
-            } else {
-                this.depFilter = e.resultCode;
-            }
-        },
-        updateBuffer(new_radius) {
-            if(this.buffer.options.radius) {
-                this.buffer.setRadius(new_radius);
-                this.flyToBoundsWithOffset(this.buffer);
-            }
-        },
-        clearMap() {
-            this.fs_cards = '';
-            this.markerToHover.coordinates = '';
-            this.clickedMarkerLayer.clearLayers();
-            this.bufferLayer.clearLayers();
-            this.adressLayer.clearLayers();
-            this.map.flyTo(this.mapOptions.center, this.mapOptions.zoom);
-        },
-        openSearchPanel() {
-            this.sidebar.open('search-tab')
-        },
-        // check if app is loaded in an iframe
-        checkWindowLocation(ifTrue, ifFalse) {
-            if ( window.location === window.parent.location ) {	  
-                // console.log("iframe : False")
-                return ifTrue;
-            } else {	  
-                // console.log("iframe : true")
-                return ifFalse;
-            };
-        },
-        // check if data from drive has been loaded 
-        checkPageStatus() {
-            if(page_status == undefined) {
-                window.setTimeout(this.checkPageStatus,10);
-            } else {
-                // check if app loaded in an iframe
-                this.iframe ? this.sidebar.open("home") : this.sidebar.open("search-tab"); 
-                // focus on search bar
-                // document.getElementById("search-field").focus();
-
-                let circle_markers = L.layerGroup({});
-
-                for(let i=0; i<fs_tab_fetched.length; i++) {
-                    e = fs_tab_fetched[i];
-
-                    circle = L.circleMarker([e.latitude, e.longitude], this.circles)
-                                .on("mouseover", (e) => { 
-                                    this.onMouseover(e.sourceTarget.content);
-                                    this.getMarkertoHover(e.sourceTarget.content.matricule)
-                                })
-                                .on("mouseout", () => { 
-                                    this.onMouseOut();
-                                })
-                                .on("click", (e) => { 
-                                    this.displayInfo(e.sourceTarget.content);
-                                });
-                    circle.setStyle({fillColor:this.getMarkerColor(e)})
-                    circle.content = e;
-                    circle_markers.addLayer(circle);
-                };
-
-                this.map.addLayer(circle_markers);
-            }
-        },
-    },
     watch: {
         marker() {
             let list_points = [];
-
             // reset everything : clear layers, previous clicked markers
             this.clearMap();
-
+            
             // drop marker of searched address on map
             if(this.marker) {
-                address_marker = L.marker(this.marker)
-                .bindTooltip(this.marker_tooltip, {
-                    permanent:true, 
-                    direction:"top", 
-                    className:'leaflet-tooltip-result'
-                }).openTooltip();
-
-                this.adressLayer.addLayer(address_marker)
+                let address_marker = L.marker(this.marker)
+                                .bindTooltip(this.marker_tooltip, {
+                                    permanent:true, 
+                                    direction:"top", 
+                                    className:'leaflet-tooltip-result'
+                                }).openTooltip();
+                this.adressLayer.addLayer(address_marker);
             };
 
             // convert data lat lng to featureCollection
             this.data.forEach(feature => {
-                list_points.push(turf.point([feature.latitude, feature.longitude], {id: feature.matricule}))
+                list_points.push(turf.point([feature.latitude, feature.longitude], { id: feature.matricule }))
             });
             list_points = turf.featureCollection(list_points);
 
@@ -1091,10 +1229,10 @@ let map_template = {
                 }
             });
 
-            let closest_points = list_points.features.slice(0, 20);
+            let closest_points = list_points.features;
 
             // send ids of found fs to data prop
-            closest_fs = [];
+            let closest_fs = [];
             closest_points_id = closest_points.map(e => { return e.properties.id })
 
             closest_fs = this.data.filter(e => {
@@ -1108,8 +1246,17 @@ let map_template = {
                     }
                 })
             });
-            
-            this.fs_cards = closest_fs.sort((a,b) => {
+
+            // if radius in url then take url radius
+            if(this.params.has('radius')) {
+                searchRadius = this.params.get('radius')
+            } else {
+                searchRadius = this.searchRadius
+            }
+
+            this.fs_cards = closest_fs.filter(e => {
+                return e.distance <= searchRadius
+            }).sort((a,b) => {
                 if(a.distance > b.distance) {
                     return 1;
                 } else if (a.distance < b.distance) {
@@ -1120,17 +1267,24 @@ let map_template = {
             });
 
             // create buffer 
-            radius = this.fs_cards[4].distance*1000;
+            radius = this.searchRadius*1000;
             perimetre_recherche = this.buffer.setRadius(radius);
-            this.bufferLayer.addLayer(perimetre_recherche);
+            this.maskLayer.addLayer(perimetre_recherche);
             // pan map view to circle with offset from sidebar
             this.flyToBoundsWithOffset(perimetre_recherche);
+
+            this.searchType = "address"
+            // setup url params
+            this.params.set('qtype','address');
+            this.params.set('qlatlng',this.marker);
+            this.params.set('qlabel',this.marker_tooltip);
+            this.params.set('qr',this.searchRadius);
+            window.history.pushState({},'',this.url);
         },
         depFilter() {
             // clear address layers (buffer + pin address)
-            this.adressLayer.clearLayers();
-            this.bufferLayer.clearLayers();
-            this.fs_cards = '';
+            this.clearMap();
+            this.searchType = "dep";
 
             // filter data with matching departement code and send it to cards
             this.fs_cards = this.data.filter(e => {
@@ -1141,26 +1295,26 @@ let map_template = {
                 return compare 
             });
             // purge object from distance property (computed in 'address' search)
-            this.fs_cards.forEach(e => delete e.distance)
+            this.fs_cards.forEach(e => delete e.distance);
 
-
-            // draw departement borders
-            dep_filter_geom = new L.GeoJSON(this.geom_dep, {
-                interactive:false,
-                filter:(feature) => {
-                    return feature.properties.insee_dep == this.depFilter;
-                },
-                style: {
-                    fillOpacity:0,
-                    color:"red",
-                    opacity:1,
-                    weight:2
-                }
+            let filteredFeature = this.geom_dep.features.filter(e => {
+                return e.properties.insee_dep === this.depFilter;
             });
-            this.bufferLayer.addLayer(dep_filter_geom);
+            let depMask = L.mask(filteredFeature, {
+                fillColor:'rgba(0,0,0,.25)',
+                color:'red'
+            });
+            this.maskLayer.addLayer(depMask);
 
             // pan to dep borders
-            this.flyToBoundsWithOffset(dep_filter_geom)
+            this.flyToBoundsWithOffset(new L.GeoJSON(filteredFeature));
+            // setup url params
+            this.clearURLParams();
+            this.params.set('qtype','admin');
+            this.params.set('qcode',this.depFilter);
+            let qlabel = filteredFeature[0].properties.lib_dep;
+            this.params.set('qlabel',qlabel);
+            // window.history.pushState({},'',this.url);            
         },
     },
     mounted() {
@@ -1168,7 +1322,9 @@ let map_template = {
 
         if(!session_data) {
             init();
+            this.loadDep();
         } else {
+            this.geom_dep = JSON.parse(sessionStorage.getItem("LocalGeomDep"));
             page_status = "loaded";
             loading.remove();
             this.data = session_data;
@@ -1177,15 +1333,436 @@ let map_template = {
 
         this.initMap();
         this.checkPageStatus();
-        this.loadDep();
+
+        // this.map.on("click", (e) => {
+        //     console.log(e);
+        //     fetch(`https://api-adresse.data.gouv.fr/reverse/?lon=${e.latlng.lng}&lat=${e.latlng.lat}`)
+        //     .then(res => res.json())
+        //     .then(res => {
+        //         e = {
+        //             resultType:'address',
+        //             resultCoords:[e.latlng.lat, e.latlng.lng],
+        //             resultLabel:res.features[0].properties.label
+        //         };
+        //         this.getSearchResult(e)
+        //     })
+        // });
+
     },
+    methods: {
+        initMap() {
+            this.params = params;
+            this.url = url;
+
+            searchQuery = document.getElementById('search-field');
+            searchQuery.value = params.get("qlabel") || "";
+
+            let defaultZoomLevel = this.iframe ? 6 : 5.55;
+
+            // const map = L.map('mapid', this.mapOptions);
+            const map = new L.map('mapid', {
+                center: [params.get("lat") || 46.413220, params.get("lng") || 1.219482],
+                zoom:params.get("z") || defaultZoomLevel,
+                preferCanvas: true,
+                zoomControl:false
+            });
+
+            // Get url parameters
+            map.on("moveend", () => {
+                // get map params
+                lat = map.getCenter().lat.toFixed(6);
+                lng = map.getCenter().lng.toFixed(6);
+                zoom = map.getZoom();
+
+                params.set("lat",lat);
+                params.set("lng",lng);
+                params.set("z",zoom);
+             
+                window.history.pushState({},'',url)
+            });
+            
+            // this.iframe ? map.setZoom(6) : map.setZoom(5.55);
+            L.tileLayer(this.mapOptions.url,{ attribution:this.mapOptions.attribution }).addTo(map);
+            this.map = map;
+            // zoom control, fullscreen & scale bar
+            L.control.zoom({position: 'topright'}).addTo(map);
+            L.control.fullscreen({
+                position:'topright',
+                forcePseudoFullScreen:true,
+            }).addTo(this.map);
+            L.control.scale({ position: 'bottomright', imperial:false }).addTo(map);
+
+            // sidebar
+            const sidebar = window.L.control.sidebar({
+                autopan: true, 
+                closeButton: true, 
+                container: "sidebar", 
+                position: "left"
+            }).addTo(map);
+            this.sidebar = sidebar;
+            
+            // legend
+            const legend = L.control({position: 'topright'});
+
+            legend.onAdd = function (map) {
+                let expand = false;
+                var div = L.DomUtil.create('div', 'leaflet-legend');
+                div.title = "Légende";
+                div.ariaLabel = "Légende";
+
+                let content_default = "<i class='la la-list' aria-label='Légende'></i>";
+                div.innerHTML += content_default;
+                
+                div.addEventListener("click", () => {
+                    event.stopPropagation()
+                    if(expand === false) {
+                        expand = true;
+                        // here we can fill the legend with colors, strings and whatever
+                        div.innerHTML = `<span style="font-family:'Marianne-Bold'">Type de structure</span><br>`;
+                        div.innerHTML += `<span class="leaflet-legend-marker-siege"></span><span> Site principal</span><br>`;
+                        div.innerHTML += `<span class="leaflet-legend-marker-bus"></span><span> Bus itinérant</span><br>`;
+                        div.innerHTML += `<span class="leaflet-legend-marker-antenne"></span><span> Antenne</span><br>`;
+                    } else if (expand == true) {
+                        expand = false;
+                        div.innerHTML = content_default;
+                    };
+                    map.on("click", ()=>{
+                        if(expand === true) {
+                            expand = false
+                            div.innerHTML = content_default;
+                        };
+                    });
+                });
+                return div;
+            };
+            legend.addTo(map);
+
+            // texte en cours de développement
+            // const enDeveloppement = L.control({position: 'topleft'});
+            // enDeveloppement.onAdd = function() {
+            //     let div = L.DomUtil.create('div','en-developpement');
+            //     div.innerHTML += `<h5 style="font-family:'Marianne-Bold';color:red;background-color:white; padding:5px; border: solid 1px red">/!\\ DEVELOPPEMENT EN COURS /!\\</h5>`;
+            //     return div;
+            // };
+            // enDeveloppement.addTo(map);
+
+            // on click remove previous clicked marker
+            map.on("click",(e) => {
+                event.stopPropagation();
+                // this.clickedMarkerLayer.clearLayers();
+                this.clearURLParams();
+                this.clearMap()
+
+            })
+        },
+        loadDep() {
+            fetch("data/geom_dep.geojson")
+            .then(res => res.json())
+            .then(res => {
+                this.geom_dep = res;
+                sessionStorage.setItem("LocalGeomDep",JSON.stringify(res))
+            });
+        },
+        flyToBoundsWithOffset(layer) {
+            let offset = document.querySelector('.leaflet-sidebar-content').getBoundingClientRect().width;
+            this.map.flyToBounds(layer, {paddingTopLeft: [offset, 0], duration:0.75})
+        },
+        onMouseover(fs) {
+            this.markerToHover.coords = [fs.latitude, fs.longitude];
+            this.markerToHover.lib = fs.lib_fs;
+            
+            id = fs.matricule;
+            if(this.fs_cards) {
+                this.hoveredMarker = id; // send hovered marker's ID to children cards 
+            };
+        },
+        onMouseOut() {
+            this.hoveredMarker = '';
+            this.markerToHover.coords = '';
+            // this.markerToHover.lib = '';
+            this.getMarkertoHover('');  
+        },
+        displayInfo(fs) {
+            // empêcher le déclenchement de la réinitialisation si cliqué
+
+            this.sidebar.open('search-tab');          
+            // send info of the one clicked point to children (cards)
+            if(fs.distance) {
+                delete fs.distance;
+            };
+            this.fs_cards = [fs];
+            
+            // add white stroke to clicked
+            this.clickedMarkerLayer.clearLayers();
+            let glowStyle = {
+                radius:10,
+                weight:10,
+                color:'rgba(245,245,245,.75)',
+                fillColor:this.getMarkerColor(fs.type),
+                fillOpacity:1,
+                interactive:false
+            };
+            let glow10 = new L.circleMarker([fs.latitude, fs.longitude], glowStyle, { weight:10 });
+            let glow15 = new L.circleMarker([fs.latitude, fs.longitude], glowStyle, { weight:15 });
+
+            let tooltipContent = `
+                    <span class='leaflet-tooltip-header ${this.getTooltipCategory(fs.type)}'>
+                        ${fs.lib_fs}
+                    </span>
+                    <span class='leaflet-tooltip-body'>
+                        ${fs.code_postal} ${fs.lib_com}
+                    </span>`
+
+            // add marker icon
+            let marker = new L.marker([fs.latitude, fs.longitude], {
+                icon:L.icon({
+                    iconUrl:this.getIconCategory(fs.type),  
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 40]
+                })
+            }).addTo(this.map);
+
+            marker.bindTooltip(tooltipContent, {
+                direction:'top',
+                opacity:1,
+                permanent:true, 
+            });
+
+            [glow15,glow10,marker].forEach(el => this.clickedMarkerLayer.addLayer(el))
+
+            // remove buffer and address marker
+            this.maskLayer.clearLayers();
+            this.adressLayer.clearLayers();
+
+            // setup url params
+            this.clearURLParams();
+            this.params.set("lat", this.map.getCenter().lat.toFixed(6))
+            this.params.set("lng", this.map.getCenter().lng.toFixed(6))
+            this.params.set("z", this.map.getZoom())
+            this.params.set("qtype","click");
+            this.params.set("matricule",fs.matricule);
+            window.history.pushState({},'',this.url);
+        },
+        // styles
+        getMarkerColor(type) {
+            switch (type) {
+                case "Siège":
+                    return "rgb(41,49,115)";
+                case "Antenne":
+                    return "#5770be";
+                case "Bus":
+                    return "#00ac8c";
+            };
+        },
+        getIconCategory(type) {
+            if(type === "Siège") {
+                return './img/picto_siege.png'
+            } else if(type === "Antenne"){
+                return './img/picto_antenne.png'
+            } 
+            else if(type === "Bus"){
+                return './img/picto_itinerante.png'
+            }
+        },
+        getTooltipCategory(type) {
+            if(type === "Siège") {
+                return 'siege'
+            } else if(type === "Antenne") {
+                return 'antenne'
+            } else if(type === "Bus") {
+                return 'bus'
+            }
+        },
+        getMarkertoHover(id) {
+            if (id) {
+                let fs = this.data.filter(e => {
+                    return e.matricule == id;
+                })[0];
+
+                this.markerToHover.coords =  [fs.latitude, fs.longitude];
+                let type = fs.type;
+
+                markerToHover = L.marker(this.markerToHover.coords, {
+                    className:'fs-marker',
+                    icon:L.icon({
+                        iconUrl:this.getIconCategory(type),  
+                        iconSize: [40, 40],
+                        iconAnchor: [20, 40]
+                    })
+                }).addTo(this.map);
+                
+                let tooltipContent = `
+                                <span class='leaflet-tooltip-header ${this.getTooltipCategory(type)}'>${fs.lib_fs}</span>
+                                <span class='leaflet-tooltip-body'>${fs.code_postal} ${fs.lib_com}</span>`
+
+                markerToHover.bindTooltip(tooltipContent, {
+                    direction:'top',
+                    opacity:1,
+                    permanent:true, 
+                });
+
+            } else {
+                markerToHover.removeFrom(this.map);
+                this.markerToHover.coords = '';
+                this.markerToHover.lib = '';
+            }
+        },
+        getSearchResult(e) {
+            // get result infos emitted from search group
+            if(e.resultType == "address") {
+                this.marker = e.resultCoords;
+                this.marker_tooltip = e.resultLabel;
+            } else {
+                if(this.geom_dep) {
+                    this.depFilter = e.resultCode;
+                }
+            }
+        },
+        updateBuffer(new_radius) {
+            this.searchRadius = new_radius;
+            if(this.buffer) {
+                this.buffer.setRadius(new_radius*1000);
+                this.fs_cards = this.data.filter(e => {
+                    return e.distance <= new_radius
+                }).sort((a,b) => {
+                    if(a.distance > b.distance) {
+                        return 1;
+                    } else if (a.distance < b.distance) {
+                        return -1
+                    } else if (a.distance === b.distance) {
+                        return 0
+                    }
+                });
+                this.flyToBoundsWithOffset(this.buffer);
+            };
+        },
+        zoomOnResults() {
+            let bounds = this.fs_cards.map(e => {
+                return [e.latitude,e.longitude]
+            });
+            this.flyToBoundsWithOffset(bounds);
+        },
+        clearMap() {
+            this.fs_cards = '';
+            this.markerToHover.coordinates = '';
+            this.clickedMarkerLayer.clearLayers();
+            this.maskLayer.clearLayers();
+            this.adressLayer.clearLayers();
+            // this.map.flyTo(this.mapOptions.center, this.mapOptions.zoom, {duration:0.5});
+
+            // purge url params
+            this.clearURLParams();
+        },
+        clearURLParams() {
+           this.url.search = '';
+        },
+        openSearchPanel() {
+            this.sidebar.open('search-tab')
+        },
+        checkURLParams() {
+            let params = this.params;
+            queryType = params.get("qtype");
+
+            if(queryType) {
+                this.sidebar.open("search-tab");
+            }
+            switch (queryType) {
+                case "address":
+                    let resultMarker = params.get("qlatlng").split(",");
+                    let resultLabel = params.get("qlabel");    
+                    this.marker = resultMarker;
+                    this.marker_tooltip = resultLabel;                    
+                    this.sidebar.open("search-tab");
+                    break;
+                case "admin":
+                    let resultCodeDep = params.get("qcode");
+                    console.log(resultCodeDep);
+                    this.depFilter = resultCodeDep;
+                    this.sidebar.open("search-tab");
+                break;
+                case "click":
+                    let id = params.get("matricule");
+                    let fs = fs_tab_fetched.filter(e => e.matricule == id)[0];
+                    this.displayInfo(fs);                    
+                    center = this.map.getCenter();
+                    this.map.setView([center.lat, fs.longitude]);
+                    break;
+            };
+        },
+        // check if app is loaded in an iframe
+        checkWindowLocation(ifTrue, ifFalse) {
+            if ( window.location === window.parent.location ) {	  
+                return ifTrue;
+            } else {	  
+                return ifFalse;
+            };
+        },
+        // check if data from drive has been loaded 
+        checkPageStatus() {
+            if(page_status == undefined) {
+                window.setTimeout(this.checkPageStatus,10);
+            } else {
+                // check if app loaded in an iframe
+                this.iframe ? this.sidebar.open("home") : this.sidebar.open("search-tab"); 
+                // focus on search bar
+                // document.getElementById("search-field").focus();
+
+                let circleMarkersLayer = L.layerGroup({});
+
+                for(let i=0; i<fs_tab_fetched.length; i++) {
+                    e = fs_tab_fetched[i];
+
+                    let circle = L.circleMarker([e.latitude, e.longitude], this.circlesStyle);
+                    circle.setStyle({fillColor:this.getMarkerColor(e.type)})
+                    circle.content = e;
+
+                    let circleAnchor = L.circleMarker([e.latitude, e.longitude], {
+                        radius:20,
+                        fillOpacity:0,
+                        opacity:0
+                    }).on("mouseover", (e) => { 
+                        this.onMouseover(e.sourceTarget.content);
+                        this.getMarkertoHover(e.sourceTarget.content.matricule)
+                    }).on("mouseout", () => { 
+                        this.onMouseOut();
+                    }).on("click", (e) => { 
+                        L.DomEvent.stopPropagation(e);
+                        this.displayInfo(e.sourceTarget.content);
+                    });
+                    circleAnchor.content = e;
+                    circleMarkersLayer.addLayer(circle);
+                    circleMarkersLayer.addLayer(circleAnchor);
+                }
+
+                this.map.addLayer(circleMarkersLayer);
+
+                this.checkURLParams();
+            }
+        },
+    }
 };
 
+const routes = [
+    {
+        name:'carte',
+        path:'/',
+        component: mapComponent
+    },
+    {
+        name: 'fiche',
+        path: '/fiche:matricule', 
+        component: pdfComponent, 
+        props:true,
+    },
+];
+
+const router = new VueRouter({
+    // mode:'history',
+    routes // raccourci pour `routes: routes`
+})
 
 // finale instance vue
 let vm = new Vue({
+    router,
     el: '#app',
-    components: {
-        'leaflet-map': map_template,
-    },
 });
