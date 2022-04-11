@@ -14,6 +14,9 @@ Les données présentées sur cette carte sont collectées, traitées et mainten
 Les données sont diffusées sous licence Ouverte Étalab 2.0 sur la page data-gouv de l'ANCT : https://www.data.gouv.fr/fr/datasets/liste-des-structures-france-services/ 
 
 
+## Technologies
+Cet outil, conçu et développé par le service cartographie de l'ANCT, a été réalisé en HTML/CSS/Javascript et utilise les librairies suivantes : Vue, Leaflet, leaflet sidebar, Bootstrap, Turf, Line-awesome, jsPDF, Papaparse. 
+
 ## En savoir plus sur le programme
 Sur le site du ministère de la Cohésion des territoires et des Relations avec les collectivités territoriales : https://cohesion-territoires.gouv.fr/france-services
 
