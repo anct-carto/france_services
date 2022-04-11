@@ -16,6 +16,7 @@ Les données sont diffusées sous licence Ouverte Étalab 2.0 sur la page data-g
 
 ## Technologies
 Cet outil, conçu et développé par le service cartographie de l'ANCT, a été réalisé en HTML/CSS/Javascript et utilise les librairies suivantes : Vue, Leaflet, leaflet sidebar, Bootstrap, Turf, Line-awesome, jsPDF, Papaparse. 
+Le moteur de recherche s'appuie sur l'API adresse, alimentée par la Base adresse nationale (BAN) et sur l'API Administratif (API Geo). 
 
 ## En savoir plus sur le programme
 Sur le site du ministère de la Cohésion des territoires et des Relations avec les collectivités territoriales : https://cohesion-territoires.gouv.fr/france-services
