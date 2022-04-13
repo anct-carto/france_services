@@ -39,6 +39,7 @@ function fetchSpreadsheetData(res) {
         if(e.id_fs) {
             e.matricule = e.id_fs;
             e.departement = e.insee_dep
+            e.commentaire_horaires = e.commentaire
         }
         
         if(e.itinerance == "non" || e.itinerance == "") {
