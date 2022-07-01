@@ -31,6 +31,7 @@ function init() {
     });
 };
 
+// transformation données brutes pour être compatibles avec la carte
 function fetchSpreadsheetData(res) {
     res.forEach(e => { fs_tab_fetched.push(e)});
     // transformations avant utilisation
@@ -56,6 +57,7 @@ function fetchSpreadsheetData(res) {
     fs_tab_fetched = fs_tab_fetched.filter(e => {
         return e.latitude != 0 & e.latitude != "" & e.longitude != 0 & e.longitude != ""
     });
+    // stockage données en local pour ne pas faire appel aux données à chaque rechargement
     sessionStorage.setItem("session_local", JSON.stringify(fs_tab_fetched));
     loading.remove();
     page_status = "loaded";
@@ -683,7 +685,7 @@ let cardTemplate = {
                     <p v-if = "fs.telephone">
                       <i class = "las la-phone"></i>
                       <ul>
-                        <li>{{ fs.telephone }}</li>
+                        <li @click="event.stopPropagation()">{{ fs.telephone }}</li>
                       </ul>
                     </p>
                     <p v-if = "fs.mail">
@@ -715,7 +717,7 @@ let cardTemplate = {
                             </li>
                         </ul>
                     </p>
-                    <p v-if="fs.commentaire_horaires">
+                    <p v-if="fs.commentaire_horaires" @click="event.stopPropagation()" class="card-body-commentaire">
                         <i class = "las la-info-circle"></i>                    
                         <ul>
                             <li>{{ fs.commentaire_horaires }}</li>
@@ -1081,6 +1083,7 @@ let sidebarComponent = {
                     </p>
                     <p><b>Technologies utilisées :</b> Leaflet, Bootstrap, VueJS, Turf, Étalab - API Geo </p>
                     <p><b>Géocodage : </b>Étalab - Base adresse nationale</p>
+                    <p>Les données affichées sur cette carte sont disponibles et téléchargeables sur <a href="https://www.data.gouv.fr/fr/datasets/liste-des-structures-france-services/" target="_blank">data.gouv.fr</a>.</p>
                     <p>Le code source de cet outil est disponible sur <a href="https://github.com/anct-carto/france_services" target="_blank">Github</a>.</p>
                 </div>
             </div>

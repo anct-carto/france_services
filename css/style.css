@@ -598,6 +598,10 @@ input[type="range"]::-moz-range-progress {
 	margin-bottom: 5px;
 }
 
+.card-body-commentaire {
+	cursor:default
+}
+
 .collapse-text {
 	justify-content: center;
 	font-style: italic;
