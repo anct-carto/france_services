@@ -87,7 +87,7 @@ const loadingScreen = {
 
 
 
-let searchGroupComponent = {
+const searchGroupComponent = {
     template: `
             <div id="search-bar-container">
                 <div id = "search-type-group">
@@ -346,7 +346,7 @@ let searchGroupComponent = {
 
 window.jsPDF = window.jspdf.jsPDF
 
-let pdfComponent = {
+const pdfComponent = {
     computed: {
         fs() {
             return this.$route.params.fs
@@ -601,7 +601,7 @@ let cardTemplate = {
             });
         },
         print(fs) {
-            let id = fs.matricule;
+            const id = fs.matricule;
             this.$htmlToPaper(id);
         },
         getPdf() {
