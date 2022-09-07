@@ -61,30 +61,11 @@ function fetchSpreadsheetData(res) {
     page_status = "loaded";
 };
 
-// print function
-const print_options = {
-    name: '_blank',
-    specs: [
-      'fullscreen=yes',
-      'titlebar=no',
-      'scrollbars=no'
-    ],
-    styles: [
-        "lib/line-awesome-1.3.0/css/line-awesome.min.css",
-        "lib/bootstrap.min.css",
-        "lib/bootstrap.min.css.map",
-        "css/style.css",
-        "css/font.css"  
-    ]
-};
-
-
-
 
 // ****************************************************************************
 
 // Loading screen
-let loadingScreen = {
+const loadingScreen = {
     template:`
         <div>
             <div class="w-100 h-100 d-flex flex-column justify-content-center align-items-center" id = "loading">
