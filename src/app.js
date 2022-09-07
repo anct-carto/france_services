@@ -15,8 +15,6 @@ const url = new URL(window.location.href);
 const params = url.searchParams;
 const qtype = params.get("qtype");
 
-// window.googleDocCallback = function () { return true; };
-// const data_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRuDOzH3iy8ZNpDJiXHLyILhTgmEdeJUa7GicPR7QdEngN6d4jPMFvfERkVOTN0qal96k5aeGXtxMzA/pub?output=csv&callback=googleDocCallback"
 const data_url = "https://www.data.gouv.fr/fr/datasets/r/afc3f97f-0ef5-429b-bf16-7b7876d27cd4"
 let fs_tab_fetched = [];
 let page_status;
@@ -740,44 +738,12 @@ let cardTemplate = {
               </div>`
   };
 
-// ****************************************************************************
-
-let cardNumber = {
-    props:['nb', 'category', 'text'],
-    data() {
-        return {
-            number:0,
-            interval:0
-        }
-    },
-    mounted() {
-        setTimeout(() => {
-            this.interval = setInterval(() => {
-                this.number++;
-                if(this.number>=this.nb) {
-                    clearInterval(this.interval)
-                }
-            }, 1)
-        }, 1);
-    },
-    template: `<div class="card counters col-sm-3.5">
-                    <div class="card-body">
-                        <h3 :class="'counter '+category">{{ number }}</h3>
-                        <span>{{ text }}</span>
-                    </div>
-                </div>`
-};
 
 
 // ****************************************************************************
 
 
-
-
-// ****************************************************************************
-
-
-let sliderComponent = {
+const sliderComponent = {
     data() {
         return {
             radiusVal:'',
@@ -830,7 +796,7 @@ let sliderComponent = {
 
 // ****************************************************************************
 
-let resultsCountComponent = {
+const resultsCountComponent = {
     props:['nbResults','type'],
     computed: {
         styleSheet() {
@@ -869,11 +835,10 @@ let resultsCountComponent = {
 
 // ****************************************************************************
 
-let sidebarComponent = {
+const sidebarComponent = {
     components: {
         'search-group':searchGroupComponent,
         'card':cardTemplate,
-        'card-number':cardNumber,
         'slider':sliderComponent,
         'result-count':resultsCountComponent,
     },
@@ -1098,7 +1063,7 @@ let sidebarComponent = {
 
 let markerToHover;
 
-let mapComponent = {
+const mapComponent = {
     template: `
         <div>
             <sidebar :fromParent="fs_cards" 
@@ -1766,7 +1731,7 @@ const router = new VueRouter({
 })
 
 // finale instance vue
-let vm = new Vue({
+const vm = new Vue({
     router,
     el: '#app',
 });
