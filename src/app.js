@@ -42,7 +42,7 @@ function fetchSpreadsheetData(res) {
         }
         
         if(e.itinerance == "non" || e.itinerance == "") {
-            if(e.format_fs == "Espace labellisé") {
+            if(e.format_fs == "Site principal") {
                 e.type = "Siège";
             } else if(e.format_fs == "Antenne") {
                 e.type = "Antenne";
