@@ -37,11 +37,6 @@ function fetchSpreadsheetData(res) {
     // transformations avant utilisation
     fs_tab_fetched.forEach(e => {
         e.itinerance = e["itinerance"].toLowerCase();
-        if(e.id_fs) {
-            e.matricule = e.id_fs;
-            e.departement = e.insee_dep
-            e.commentaire_horaires = e.commentaire
-        }
         
         if(e.itinerance == "non" || e.itinerance == "") {
             if(e.format_fs == "Site principal") {
@@ -162,13 +157,6 @@ const SearchBar = {
                 return "Saisissez un nom ou code de département ..."
             }
         },
-        searchType() {
-            if(qtype == 'address' || qtype == 'admin') {
-                return qtype
-            } else {
-                return 'address'
-            }
-        }
     },
     watch: {
         inputAdress() {
@@ -401,7 +389,7 @@ const FichePDF = {
             
             let htmlToPrint = this.$el;
 
-            let outputFileName = 'france-services-fiche-' + this.fs.matricule + '.pdf'
+            let outputFileName = 'france-services-fiche-' + this.fs.id_fs + '.pdf'
             
             pdf.html(htmlToPrint, {
                 margin:[5,16,0,16],
@@ -492,10 +480,10 @@ const FichePDF = {
                         </div>
                     </div><br>
                     <div class="corps">
-                        <div v-if="fs.commentaire_horaires">
+                        <div v-if="fs.commentaire">
                             <!--<i class = "las la-info-circle"></i>-->
                             <h5><b>Commentaire(s)</b></h5>
-                            <span>{{ fs.commentaire_horaires }}</span>
+                            <span>{{ fs.commentaire }}</span>
                         </div>
                     </div>
                  </div>
@@ -564,14 +552,14 @@ const CardTemplate = {
             }
         },
         getHoveredCard() {
-            if(this.cardToHover === this.fs.matricule) {
+            if(this.cardToHover === this.fs.id_fs) {
                 return "hovered"
             } else {
                 return "card"
             }
         },
         hoverOnMap() {
-            this.$emit('hoverOnMap', this.fs.matricule);
+            this.$emit('hoverOnMap', this.fs.id_fs);
         },
         stopHoverMap() {
             this.$emit('hoverOnMap', '');
@@ -591,12 +579,12 @@ const CardTemplate = {
             });
         },
         getPdf() {
-            matricule = this.fs.matricule;
-            this.$router.push({name: 'fiche', params: { matricule: matricule, fs:this.fs }});
+            id_fs = this.fs.id_fs;
+            this.$router.push({name: 'fiche', params: { id_fs: id_fs, fs:this.fs }});
         },
         copyLink() {
             event.stopPropagation()
-            let linkToShare = `${url.origin}/france_services/?qtype=click&matricule=${this.fs.matricule}`;
+            let linkToShare = `${url.origin}/france_services/?qtype=click&id_fs=${this.fs.id_fs}`;
             navigator.clipboard.writeText(linkToShare);
             this.showTooltip = true;
         },
@@ -607,7 +595,7 @@ const CardTemplate = {
     template: `<div class="card result-card"
                     aria-label="Cliquer pour afficher plus d'informations"
                     title="Cliquer pour afficher plus d'informations"
-                    :id="fs.matricule"
+                    :id="fs.id_fs"
                     @click="showInfo = !showInfo" 
                     :class="getHoveredCard()" 
                     @mouseover="hoverOnMap"
@@ -681,10 +669,10 @@ const CardTemplate = {
                             </li>
                         </ul>
                     </p>
-                    <p v-if="fs.commentaire_horaires" @click="event.stopPropagation()" class="card-body-commentaire">
+                    <p v-if="fs.commentaire" @click="event.stopPropagation()" class="card-body-commentaire">
                         <i class = "las la-info-circle"></i>                    
                         <ul>
-                            <li>{{ fs.commentaire_horaires }}</li>
+                            <li>{{ fs.commentaire }}</li>
                         </ul>
                     </p>
                     <p v-if="fs.groupe">
@@ -1065,7 +1053,7 @@ const LeafletMap = {
 
             // convert data lat lng to featureCollection
             this.data.forEach(feature => {
-                list_points.push(turf.point([feature.latitude, feature.longitude], { id: feature.matricule }))
+                list_points.push(turf.point([feature.latitude, feature.longitude], { id: feature.id_fs }))
             });
             list_points = turf.featureCollection(list_points);
 
@@ -1103,12 +1091,12 @@ const LeafletMap = {
             closest_points_id = closest_points.map(e => { return e.properties.id })
 
             closest_fs = this.data.filter(e => {
-                return closest_points_id.includes(e.matricule)
+                return closest_points_id.includes(e.id_fs)
             });
 
             closest_fs.forEach(e => {
                 closest_points.forEach(d => {
-                    if(d.properties.id === e.matricule) {
+                    if(d.properties.id === e.id_fs) {
                         e.distance = Math.round(d.properties.distance*10)/10
                     }
                 })
@@ -1155,7 +1143,7 @@ const LeafletMap = {
 
             // filter data with matching departement code and send it to cards
             this.fs_cards = this.data.filter(e => {
-                return e.departement == this.depFilter
+                return e.insee_dep == this.depFilter
             }).sort((a,b) => {
                 let compare = 0;
                 a.lib_fs > b.lib_fs ? compare = 1 : compare = 0;
@@ -1323,7 +1311,7 @@ const LeafletMap = {
             this.markerToHover.coords = [fs.latitude, fs.longitude];
             this.markerToHover.lib = fs.lib_fs;
             
-            id = fs.matricule;
+            id = fs.id_fs;
             if(this.fs_cards) {
                 this.hoveredMarker = id; // send hovered marker's ID to children cards 
             };
@@ -1392,7 +1380,7 @@ const LeafletMap = {
             this.params.set("lng", this.map.getCenter().lng.toFixed(6))
             this.params.set("z", this.map.getZoom())
             this.params.set("qtype","click");
-            this.params.set("matricule",fs.matricule);
+            this.params.set("id_fs",fs.id_fs);
             window.history.pushState({},'',this.url);
         },
         // styles
@@ -1428,7 +1416,7 @@ const LeafletMap = {
         getMarkertoHover(id) {
             if (id) {
                 let fs = this.data.filter(e => {
-                    return e.matricule == id;
+                    return e.id_fs == id;
                 })[0];
 
                 this.markerToHover.coords =  [fs.latitude, fs.longitude];
@@ -1533,8 +1521,8 @@ const LeafletMap = {
                     this.sidebar.open("search-tab");
                 break;
                 case "click":
-                    let id = params.get("matricule");
-                    let fs = fs_tab_fetched.filter(e => e.matricule == id)[0];
+                    let id = params.get("id_fs");
+                    let fs = fs_tab_fetched.filter(e => e.id_fs == id)[0];
                     this.displayInfo(fs);                    
                     center = this.map.getCenter();
                     this.map.setView([center.lat, fs.longitude]);
@@ -1574,7 +1562,7 @@ const LeafletMap = {
                         opacity:0
                     }).on("mouseover", (e) => { 
                         this.onMouseover(e.sourceTarget.content);
-                        this.getMarkertoHover(e.sourceTarget.content.matricule)
+                        this.getMarkertoHover(e.sourceTarget.content.id_fs)
                     }).on("mouseout", () => { 
                         this.onMouseOut();
                     }).on("click", (e) => { 
@@ -1602,7 +1590,7 @@ const routes = [
     },
     {
         name: 'fiche',
-        path: '/fiche:matricule', 
+        path: '/fiche:id_fs', 
         component: FichePDF, 
         props:true,
     },
