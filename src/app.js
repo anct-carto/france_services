@@ -5,6 +5,12 @@
 
 */
 
+// Chargement données globales ****************************************************************************
+
+const dataUrl = "https://www.data.gouv.fr/fr/datasets/r/afc3f97f-0ef5-429b-bf16-7b7876d27cd4"
+let fs_tab_fetched = [];
+let page_status;
+
 // geocode
 const api_adresse = "https://api-adresse.data.gouv.fr/search/?q=";
 const api_admin = "https://geo.api.gouv.fr/departements?";
@@ -15,13 +21,9 @@ const url = new URL(window.location.href);
 const params = url.searchParams;
 const qtype = params.get("qtype");
 
-const data_url = "https://www.data.gouv.fr/fr/datasets/r/afc3f97f-0ef5-429b-bf16-7b7876d27cd4"
-let fs_tab_fetched = [];
-let page_status;
-
 
 function init() {
-    Papa.parse(data_url, {
+    Papa.parse(dataUrl, {
         download: true,
         header: true,
         skipEmptyLines:true,
@@ -87,7 +89,7 @@ const loadingScreen = {
 
 
 
-const searchGroupComponent = {
+const SearchBar = {
     template: `
             <div id="search-bar-container">
                 <div id = "search-type-group">
@@ -346,7 +348,7 @@ const searchGroupComponent = {
 
 window.jsPDF = window.jspdf.jsPDF
 
-const pdfComponent = {
+const FichePDF = {
     computed: {
         fs() {
             return this.$route.params.fs
@@ -509,7 +511,7 @@ const pdfComponent = {
 
 // ****************************************************************************
 
-let cardControlBtn = {
+const CardControlBtn = {
     props:["icon","text"],
     data() {
         return {
@@ -533,7 +535,7 @@ let cardControlBtn = {
 // ****************************************************************************
 
 
-let cardTemplate = {
+const CardTemplate = {
     props: ['fs', 'cardToHover', 'collapse'],
     data () {
       return {
@@ -544,7 +546,7 @@ let cardTemplate = {
       }
     },
     components: {
-        'control-btn':cardControlBtn
+        'control-btn':CardControlBtn
     },
     mounted() {
         // control collapsing : if only one card is on side panel than collapse = true else false
@@ -724,7 +726,7 @@ let cardTemplate = {
 // ****************************************************************************
 
 
-const sliderComponent = {
+const Slider = {
     data() {
         return {
             radiusVal:'',
@@ -816,11 +818,11 @@ const resultsCountComponent = {
 
 // ****************************************************************************
 
-const sidebarComponent = {
+const LeafletSidebar = {
     components: {
-        'search-group':searchGroupComponent,
-        'card':cardTemplate,
-        'slider':sliderComponent,
+        'search-group':SearchBar,
+        'card':CardTemplate,
+        'slider':Slider,
         'result-count':resultsCountComponent,
     },
     props: ['fromParent', 'cardToHover', 'nbFs','searchTypeFromMap'],
@@ -1044,7 +1046,7 @@ const sidebarComponent = {
 
 let markerToHover;
 
-const mapComponent = {
+const LeafletMap = {
     template: `
         <div>
             <sidebar :fromParent="fs_cards" 
@@ -1063,7 +1065,7 @@ const mapComponent = {
         </div>
     `,
     components: {
-        'sidebar': sidebarComponent,
+        'sidebar': LeafletSidebar,
     },
     data() {
         return {
@@ -1696,12 +1698,12 @@ const routes = [
     {
         name:'carte',
         path:'/',
-        component: mapComponent
+        component: LeafletMap
     },
     {
         name: 'fiche',
         path: '/fiche:matricule', 
-        component: pdfComponent, 
+        component: FichePDF, 
         props:true,
     },
 ];
