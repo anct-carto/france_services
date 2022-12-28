@@ -356,6 +356,92 @@ const SearchBar = {
 window.jsPDF = window.jspdf.jsPDF
 
 const FichePDF = {
+    template:`
+    <div class="container-sm" id="fiche-pdf">
+    <div class="row">
+            <div class="header-pdf-logos">
+                <img src="img/logo_rf.jpg" class="logo-rf">
+                <img src="img/logo_FranceServices_sans-marianne-01.jpg" class="logo-fs">
+            </div>
+            <div class="col-11 p-0">
+                <span style="font-size:.8em">Fiche d'information France services - données extraites le {{ date }}</span>
+                <h2 style='font-weight:bolder'><b>{{ fs.lib_fs }}</b></h2><br>
+                <div class = "intro">
+                    <p v-if="fs.itinerance=='oui'">
+                        <span>Attention : cette France services est en itinérance</span>
+                    </p>
+                    <p>
+                        Immatriculation de véhicules, RSA, impôt, permis de conduire, accès aux services en ligne... Vous avez besoin d’aide pour vos démarches administratives ? Quel que soit l’endroit où vous vivez, en ville ou à la campagne, France services est un guichet unique qui donne accès dans un seul et même lieu aux principaux organismes de services publics : le ministère de l'Intérieur, le ministère de la Justice, les Finances publiques, Pôle emploi, l'Assurance retraite, l'Assurance maladie, la CAF, la MSA et la Poste.</p>
+                    <p>
+                        Retrouvez la France services la plus proche de chez vous sur <a href="france-services.gouv.fr" target="_blank">france-services.gouv.fr</a> 
+                    </p>
+                    <div class="row">
+                        <div class="col-6">
+                            <h5>
+                                <!--<i class = "las la-map-marker"></i>-->
+                                <b>Adresse</b>
+                            </h5>
+                            <div>
+                                <span>
+                                    {{ fs.adresse }} <br>
+                                </span>
+                                <span v-if = "fs.complement_adresse.length">
+                                    {{ fs.complement_adresse }}<br>
+                                </span>
+                                <span>
+                                    {{ fs.code_postal }} {{ fs.lib_com }}
+                                </span>
+                            </div><br>
+                            <div>
+                                <p>
+                                    <h5>
+                                        <!--<i class = "las la-clock"></i>-->
+                                        <b>Horaires d'ouverture</b>
+                                    </h5>
+                                    <ul style="list-style: none;display: inline-block;padding-left: 5px;">
+                                        <li>
+                                            <b>Lundi : </b>{{ fs.h_lundi }} 
+                                        </li>
+                                        <li>
+                                            <b>Mardi : </b>{{ fs.h_mardi }} 
+                                        </li>
+                                        <li>
+                                            <b>Mercredi : </b>{{ fs.h_mercredi }} 
+                                        </li>
+                                        <li>
+                                            <b>Jeudi : </b>{{ fs.h_jeudi }} 
+                                        </li>
+                                        <li>
+                                            <b>Vendredi : </b>{{ fs.h_vendredi }} 
+                                        </li>
+                                        <li>
+                                            <b>Samedi : </b>{{ fs.h_samedi }} 
+                                        </li>
+                                    </ul>
+                                </p>
+                                <h5>
+                                    <!--<i class = "las la-phone"></i>-->
+                                    <b>Contact</b>
+                                </h5>
+                                <span v-if = "fs.telephone"><b>Téléphone : </b>{{ fs.telephone }}</span><br>
+                                <span v-if = "fs.mail"><b>Courriel : </b><a v-bind:href = "'mailto:' + fs.mail" target = "_blank">{{ fs.mail }}</a></span>
+                            </div><br>
+                        </div>
+                        <div class="col-6">
+                            <div id="map-pdf"></div>
+                        </div>
+                    </div>
+                </div><br>
+                <div class="corps">
+                    <div v-if="fs.commentaire">
+                        <!--<i class = "las la-info-circle"></i>-->
+                        <h5><b>Commentaire(s)</b></h5>
+                        <span>{{ fs.commentaire }}</span>
+                    </div>
+                </div>
+             </div>
+        </div>
+    </div>`,
     computed: {
         fs() {
             return this.$route.params.fs
@@ -422,93 +508,6 @@ const FichePDF = {
             });
         }, 500);
     },
-    template:`
-        <div class="container-sm" id="fiche-pdf">
-        <div class="row">
-                <div class="header-pdf-logos">
-                    <img src="img/logo_rf.jpg" class="logo-rf">
-                    <img src="img/logo_FranceServices_sans-marianne-01.jpg" class="logo-fs">
-                </div>
-                <div class="col-11 p-0">
-                    <span style="font-size:.8em">Fiche d'information France services - données extraites le {{ date }}</span>
-                    <h2 style='font-weight:bolder'><b>{{ fs.lib_fs }}</b></h2><br>
-                    <div class = "intro">
-                        <p v-if="fs.itinerance=='oui'">
-                            <span>Attention : cette France services est en itinérance</span>
-                        </p>
-                        <p>
-                            Immatriculation de véhicules, RSA, impôt, permis de conduire, accès aux services en ligne... Vous avez besoin d’aide pour vos démarches administratives ? Quel que soit l’endroit où vous vivez, en ville ou à la campagne, France services est un guichet unique qui donne accès dans un seul et même lieu aux principaux organismes de services publics : le ministère de l'Intérieur, le ministère de la Justice, les Finances publiques, Pôle emploi, l'Assurance retraite, l'Assurance maladie, la CAF, la MSA et la Poste.</p>
-                        <p>
-                            Retrouvez la France services la plus proche de chez vous sur <a href="france-services.gouv.fr" target="_blank">france-services.gouv.fr</a> 
-                        </p>
-                        <div class="row">
-                            <div class="col-6">
-                                <h5>
-                                    <!--<i class = "las la-map-marker"></i>-->
-                                    <b>Adresse</b>
-                                </h5>
-                                <div>
-                                    <span>
-                                        {{ fs.adresse }} <br>
-                                    </span>
-                                    <span v-if = "fs.complement_adresse.length">
-                                        {{ fs.complement_adresse }}<br>
-                                    </span>
-                                    <span>
-                                        {{ fs.code_postal }} {{ fs.lib_com }}
-                                    </span>
-                                </div><br>
-                                <div>
-                                    <p>
-                                        <h5>
-                                            <!--<i class = "las la-clock"></i>-->
-                                            <b>Horaires d'ouverture</b>
-                                        </h5>
-                                        <ul style="list-style: none;display: inline-block;padding-left: 5px;">
-                                            <li>
-                                                <b>Lundi : </b>{{ fs.h_lundi }} 
-                                            </li>
-                                            <li>
-                                                <b>Mardi : </b>{{ fs.h_mardi }} 
-                                            </li>
-                                            <li>
-                                                <b>Mercredi : </b>{{ fs.h_mercredi }} 
-                                            </li>
-                                            <li>
-                                                <b>Jeudi : </b>{{ fs.h_jeudi }} 
-                                            </li>
-                                            <li>
-                                                <b>Vendredi : </b>{{ fs.h_vendredi }} 
-                                            </li>
-                                            <li>
-                                                <b>Samedi : </b>{{ fs.h_samedi }} 
-                                            </li>
-                                        </ul>
-                                    </p>
-                                    <h5>
-                                        <!--<i class = "las la-phone"></i>-->
-                                        <b>Contact</b>
-                                    </h5>
-                                    <span v-if = "fs.telephone"><b>Téléphone : </b>{{ fs.telephone }}</span><br>
-                                    <span v-if = "fs.mail"><b>Courriel : </b><a v-bind:href = "'mailto:' + fs.mail" target = "_blank">{{ fs.mail }}</a></span>
-                                </div><br>
-                            </div>
-                            <div class="col-6">
-                                <div id="map-pdf"></div>
-                            </div>
-                        </div>
-                    </div><br>
-                    <div class="corps">
-                        <div v-if="fs.commentaire">
-                            <!--<i class = "las la-info-circle"></i>-->
-                            <h5><b>Commentaire(s)</b></h5>
-                            <span>{{ fs.commentaire }}</span>
-                        </div>
-                    </div>
-                 </div>
-            </div>
-        </div>
-    `
 };
 
 
@@ -536,6 +535,104 @@ const CardControlBtn = {
 
 
 const CardTemplate = {
+    template: `
+    <div class="card result-card"
+            aria-label="Cliquer pour afficher plus d'informations"
+            title="Cliquer pour afficher plus d'informations"
+            :id="fs.id_fs"
+            @click="showInfo = !showInfo" 
+            :class="getHoveredCard()" 
+            @mouseover="hoverOnMap"
+            @mouseout="stopHoverMap">
+        <div class="card-header" :class="getClass()">
+            <div class="card-text">
+                <i :class="getFontIcon()"></i> 
+                <span class="card-header-left">{{ fs.lib_fs }}</span>
+                <span class="distance" v-if="fs.distance">
+                    <i class = "las la-map-marker"></i>
+                    {{ fs.distance }} km
+                </span>                      
+            </div>
+        </div>
+        <div class="card-body"">
+            <div class = "intro">
+                <p v-if="fs.itinerance=='oui'">
+                    <i class="las la-exclamation-circle"></i> 
+                    <ul>
+                        <li>Cette France services est en itinérance</li>
+                    </ul>
+                </p>
+                <p>
+                    <i class = "las la-map-marker"></i>
+                    <ul>
+                        <li>
+                            {{ fs.adresse }} 
+                        </li>
+                        <li v-if = "fs.complement_adresse.length">
+                            {{ fs.complement_adresse }} 
+                        </li>
+                        <li>
+                            {{ fs.code_postal }} {{ fs.lib_com }}
+                        </li>
+                    </ul>
+                </p>
+            </div>
+            <div class="corps" v-show="showInfo">
+                <p v-if = "fs.telephone">
+                <i class = "las la-phone"></i>
+                <ul>
+                    <li @click="event.stopPropagation()">{{ fs.telephone }}</li>
+                </ul>
+                </p>
+                <p v-if = "fs.mail">
+                <i class = "las la-at card-icon" ></i>
+                <ul>
+                    <li><a v-bind:href = "'mailto:' + fs.mail" target = "_blank">{{ fs.mail }}</a></li>
+                </ul>
+                </p>
+                <p>
+                    <i class = "las la-clock"></i>
+                    <ul>
+                        <li>
+                            <b>Lundi : </b>{{ fs.h_lundi }} 
+                        </li>
+                        <li>
+                            <b>Mardi : </b>{{ fs.h_mardi }} 
+                        </li>
+                        <li>
+                            <b>Mercredi : </b>{{ fs.h_mercredi }} 
+                        </li>
+                        <li>
+                            <b>Jeudi : </b>{{ fs.h_jeudi }} 
+                        </li>
+                        <li>
+                            <b>Vendredi : </b>{{ fs.h_vendredi }} 
+                        </li>
+                        <li>
+                            <b>Samedi : </b>{{ fs.h_samedi }} 
+                        </li>
+                    </ul>
+                </p>
+                <p v-if="fs.commentaire" @click="event.stopPropagation()" class="card-body-commentaire">
+                    <i class = "las la-info-circle"></i>                    
+                    <ul>
+                        <li>{{ fs.commentaire }}</li>
+                    </ul>
+                </p>
+                <p v-if="fs.groupe">
+                    <i class="las la-share-alt"></i>
+                    Cette structure fait partie du réseau "{{ fs.groupe }}"
+                </p>
+                <div class="card-controls">
+                    <control-btn :icon="'search-plus'" :text="'Zoom'" @click.native="zoomOnMap"></control-btn>
+                    <control-btn :icon="'arrows-alt'" :text="'Déplacer sur'" @click.native="flyOnMap"></control-btn>
+                    <control-btn :icon="'file-pdf'" :text="'Télécharger'" @click.native="getPdf"></control-btn>
+                    <control-btn :icon="'clipboard'" :text="'Partager'" @click.native="copyLink" @mouseout.native="tooltipOff"></control-btn>
+                    <span class="copied-tooltip" v-if="showTooltip">Lien copié!</span>
+                </div>
+            </div>
+        </div>
+    </div>`,
     props: ['fs', 'cardToHover', 'collapse'],
     data () {
       return {
@@ -611,103 +708,6 @@ const CardTemplate = {
             this.showTooltip = false;
         },
     },
-    template: `<div class="card result-card"
-                    aria-label="Cliquer pour afficher plus d'informations"
-                    title="Cliquer pour afficher plus d'informations"
-                    :id="fs.id_fs"
-                    @click="showInfo = !showInfo" 
-                    :class="getHoveredCard()" 
-                    @mouseover="hoverOnMap"
-                    @mouseout="stopHoverMap">
-                <div class="card-header" :class="getClass()">
-                  <div class="card-text">
-                      <i :class="getFontIcon()"></i> 
-                      <span class="card-header-left">{{ fs.lib_fs }}</span>
-                      <span class="distance" v-if="fs.distance">
-                          <i class = "las la-map-marker"></i>
-                          {{ fs.distance }} km
-                      </span>                      
-                  </div>
-                </div>
-                <div class="card-body"">
-                  <div class = "intro">
-                    <p v-if="fs.itinerance=='oui'">
-                        <i class="las la-exclamation-circle"></i> 
-                        <ul>
-                            <li>Cette France services est en itinérance</li>
-                        </ul>
-                    </p>
-                    <p>
-                        <i class = "las la-map-marker"></i>
-                        <ul>
-                            <li>
-                                {{ fs.adresse }} 
-                            </li>
-                            <li v-if = "fs.complement_adresse.length">
-                                {{ fs.complement_adresse }} 
-                            </li>
-                            <li>
-                                {{ fs.code_postal }} {{ fs.lib_com }}
-                            </li>
-                        </ul>
-                    </p>
-                  </div>
-                  <div class="corps" v-show="showInfo">
-                    <p v-if = "fs.telephone">
-                      <i class = "las la-phone"></i>
-                      <ul>
-                        <li @click="event.stopPropagation()">{{ fs.telephone }}</li>
-                      </ul>
-                    </p>
-                    <p v-if = "fs.mail">
-                      <i class = "las la-at card-icon" ></i>
-                      <ul>
-                          <li><a v-bind:href = "'mailto:' + fs.mail" target = "_blank">{{ fs.mail }}</a></li>
-                      </ul>
-                    </p>
-                    <p>
-                        <i class = "las la-clock"></i>
-                        <ul>
-                            <li>
-                                <b>Lundi : </b>{{ fs.h_lundi }} 
-                            </li>
-                            <li>
-                                <b>Mardi : </b>{{ fs.h_mardi }} 
-                            </li>
-                            <li>
-                                <b>Mercredi : </b>{{ fs.h_mercredi }} 
-                            </li>
-                            <li>
-                                <b>Jeudi : </b>{{ fs.h_jeudi }} 
-                            </li>
-                            <li>
-                                <b>Vendredi : </b>{{ fs.h_vendredi }} 
-                            </li>
-                            <li>
-                                <b>Samedi : </b>{{ fs.h_samedi }} 
-                            </li>
-                        </ul>
-                    </p>
-                    <p v-if="fs.commentaire" @click="event.stopPropagation()" class="card-body-commentaire">
-                        <i class = "las la-info-circle"></i>                    
-                        <ul>
-                            <li>{{ fs.commentaire }}</li>
-                        </ul>
-                    </p>
-                    <p v-if="fs.groupe">
-                        <i class="las la-share-alt"></i>
-                        Cette structure fait partie du réseau "{{ fs.groupe }}"
-                    </p>
-                    <div class="card-controls">
-                        <control-btn :icon="'search-plus'" :text="'Zoom'" @click.native="zoomOnMap"></control-btn>
-                        <control-btn :icon="'arrows-alt'" :text="'Déplacer sur'" @click.native="flyOnMap"></control-btn>
-                        <control-btn :icon="'file-pdf'" :text="'Télécharger'" @click.native="getPdf"></control-btn>
-                        <control-btn :icon="'clipboard'" :text="'Partager'" @click.native="copyLink" @mouseout.native="tooltipOff"></control-btn>
-                        <span class="copied-tooltip" v-if="showTooltip">Lien copié!</span>
-                    </div>
-                  </div>
-                </div>
-              </div>`
   };
 
 
@@ -716,6 +716,17 @@ const CardTemplate = {
 
 
 const Slider = {
+    template:`
+        <div id="range-slider-group">
+            <span for="customRange1" class="form-label" style="font-size:1.1em;">Rayon de recherche à vol d'oiseau : </span><br>
+            <span id="input-thumb" ref="bubble">{{ radiusVal }} km</span>
+            <input type="range" class="form-range" 
+                id="distance-slider" 
+                v-model="radiusVal" 
+                @change="emitRadius" 
+                min="minRadiusVal" max="50" step="0.2">
+        </div><br>
+    `,
     data() {
         return {
             radiusVal:'',
@@ -752,96 +763,12 @@ const Slider = {
             this.$emit("radiusVal",this.radiusVal);      
         },
     },
-    template:`
-        <div id="range-slider-group">
-            <span for="customRange1" class="form-label" style="font-size:1.1em;">Rayon de recherche à vol d'oiseau : </span><br>
-            <span id="input-thumb" ref="bubble">{{ radiusVal }} km</span>
-            <input type="range" class="form-range" 
-                   id="distance-slider" 
-                   v-model="radiusVal" 
-                   @change="emitRadius" 
-                   min="minRadiusVal" max="50" step="0.2">
-        </div><br>
-    `
 };
 
 
 // ****************************************************************************
 
 const LeafletSidebar = {
-    components: {
-        'search-group':SearchBar,
-        'card':CardTemplate,
-        'slider':Slider,
-    },
-    props: ['sourceData', 'cardToHover','searchTypeFromMap'],
-    data() {
-        return {
-            show:false,
-            hoveredCard:'',
-            searchResult:'',
-            searchType:'address',
-        }
-    },
-    computed: {
-        map() {
-            return this.$parent.map;
-        },
-        nbResults() {
-            return {
-                siege:this.countResultByType("Siège"),
-                bus:this.countResultByType("Bus"),
-                antenne:this.countResultByType("Antenne")
-            }
-        }
-    },
-    watch: {
-        sourceData() {
-            this.show = true;
-            this.collapse = false;
-        },
-        cardToHover(card_id) {
-            hoveredCard = card_id;
-        },
-        searchTypeFromMap(value) {
-            this.searchType = value;
-        }
-    },
-    methods: {
-        countResultByType(type) {
-            let nb = this.sourceData.filter(e => {
-                return e.type == type
-            }).length;
-            return nb
-        },
-        getHoveredCard(id) {
-            if(id) {
-                this.$emit('markerToHover', id);
-            } else {
-                this.$emit('markerToHover', '');
-            }
-        },
-        getSearchResult(result) {
-            // emit search result from child to parent (map)
-            this.$emit("searchResult",result);
-            this.searchResult = result;
-        },
-        getSearchType(e) {
-            this.searchType = e;
-        },
-        clearSearch() {
-            this.$emit('clearMap');
-        },
-        zoomOnResults() {
-            this.$emit('zoomOnResults')
-        },
-        radiusVal(e) {
-            this.$emit('bufferRadius',e);
-        },
-        openSearchPanel() {
-            this.$emit("openSearchPanel")
-        },
-    },
     template: ` 
         <div id="sidebar" class="leaflet-sidebar collapsed">
             <!-- nav tabs -->
@@ -959,8 +886,80 @@ const LeafletSidebar = {
                     <p>Le code source de cet outil est disponible sur <a href="https://github.com/anct-carto/france_services" target="_blank">Github</a>.</p>
                 </div>
             </div>
-        </div>
-    `
+        </div>`,
+    components: {
+        'search-group':SearchBar,
+        'card':CardTemplate,
+        'slider':Slider,
+    },
+    props: ['sourceData', 'cardToHover','searchTypeFromMap'],
+    data() {
+        return {
+            show:false,
+            hoveredCard:'',
+            searchResult:'',
+            searchType:'address',
+        }
+    },
+    computed: {
+        map() {
+            return this.$parent.map;
+        },
+        nbResults() {
+            return {
+                siege:this.countResultByType("Siège"),
+                bus:this.countResultByType("Bus"),
+                antenne:this.countResultByType("Antenne")
+            }
+        }
+    },
+    watch: {
+        sourceData() {
+            this.show = true;
+            this.collapse = false;
+        },
+        cardToHover(card_id) {
+            hoveredCard = card_id;
+        },
+        searchTypeFromMap(value) {
+            this.searchType = value;
+        }
+    },
+    methods: {
+        countResultByType(type) {
+            let nb = this.sourceData.filter(e => {
+                return e.type == type
+            }).length;
+            return nb
+        },
+        getHoveredCard(id) {
+            if(id) {
+                this.$emit('markerToHover', id);
+            } else {
+                this.$emit('markerToHover', '');
+            }
+        },
+        getSearchResult(result) {
+            // emit search result from child to parent (map)
+            this.$emit("searchResult",result);
+            this.searchResult = result;
+        },
+        getSearchType(e) {
+            this.searchType = e;
+        },
+        clearSearch() {
+            this.$emit('clearMap');
+        },
+        zoomOnResults() {
+            this.$emit('zoomOnResults')
+        },
+        radiusVal(e) {
+            this.$emit('bufferRadius',e);
+        },
+        openSearchPanel() {
+            this.$emit("openSearchPanel")
+        },
+    },
 };
 
 
@@ -1613,6 +1612,7 @@ const router = new VueRouter({
 // ****************************************************************************
 // ****************************************************************************
 
+// injection code vue dans HTML
 const App = {
     template: 
         `<div>
@@ -1638,3 +1638,9 @@ new Vue({
         'app': App,
     },
 });
+
+
+// ****************************************************************************
+// ****************************************************************************
+
+// Fonctions universelles à l'ensemble du code
