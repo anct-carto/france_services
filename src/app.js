@@ -5,83 +5,102 @@
 
 */
 
-// Chargement données globales ****************************************************************************
-
-const dataUrl = "https://www.data.gouv.fr/fr/datasets/r/afc3f97f-0ef5-429b-bf16-7b7876d27cd4"
-let fs_tab_fetched = [];
-let page_status;
-
-// geocode
-const api_adresse = "https://api-adresse.data.gouv.fr/search/?q=";
-const api_admin = "https://geo.api.gouv.fr/departements?";
-
-const loading = document.getElementById("loading");
-
 const url = new URL(window.location.href);
 const params = url.searchParams;
 const qtype = params.get("qtype");
 
+// Chargement données globales ****************************************************************************
 
-function init() {
-    Papa.parse(dataUrl, {
-        download: true,
-        header: true,
-        skipEmptyLines:true,
-        complete: (results) => fetchSpreadsheetData(results.data)
-    });
-};
+const dataUrl = "https://www.data.gouv.fr/fr/datasets/r/afc3f97f-0ef5-429b-bf16-7b7876d27cd4"
 
-// transformation données brutes pour être compatibles avec la carte
-function fetchSpreadsheetData(res) {
-    res.forEach(e => { fs_tab_fetched.push(e)});
-    // transformations avant utilisation
-    fs_tab_fetched.forEach(e => {
-        e.itinerance = e["itinerance"].toLowerCase();
-        
-        if(e.itinerance == "non" || e.itinerance == "") {
-            if(e.format_fs == "Site principal") {
-                e.type = "Siège";
-            } else if(e.format_fs == "Antenne") {
-                e.type = "Antenne";
-            }
-        } else {
-            e.type=  "Bus";
-        };
-    });
-    /* filter on lines with latlng */
-    fs_tab_fetched = fs_tab_fetched.filter(e => {
-        return e.latitude != 0 & e.latitude != "" & e.longitude != 0 & e.longitude != ""
-    });
-    // stockage données en local pour ne pas faire appel aux données à chaque rechargement
-    sessionStorage.setItem("session_local", JSON.stringify(fs_tab_fetched));
-    loading.remove();
-    page_status = "loaded";
-};
+// charge depuis session storage ou fetch
+async function getData(path) {
+    const sessionData = JSON.parse(sessionStorage.getItem("session_data1"));
+    if(sessionData) {
+        console.log("Chargement depuis local storage");
+        return sessionData
+    } else {
+        try {
+            console.log("Chargement depuis data.gouv");
+            let data = await fetchCsv(path);
+            data = data.filter(e => e.latitude != 0 & e.latitude != "" & e.longitude != 0 & e.longitude != "" & e.id_fs != "")
+            // transformations avant utilisation
+            data.forEach(e => {
+                e.itinerance = e["itinerance"].toLowerCase();
+                
+                if(e.itinerance == "non" || e.itinerance == "") {
+                    if(e.format_fs == "Site principal") {
+                        e.type = "Siège";
+                    } else if(e.format_fs == "Antenne") {
+                        e.type = "Antenne";
+                    }
+                } else {
+                    e.type=  "Bus";
+                };
+            });
+            sessionStorage.setItem('session_data1',JSON.stringify(data));
+            return data
+        } catch (error) {
+            console.error(error)
+        }
+    }
+}
+
+// parse csv (ou tableau issu d'un tableau partagé) en json
+function fetchCsv(data_url) {
+    return new Promise((resolve,reject) => {
+        Papa.parse(data_url, {
+            download: true,
+            header: true,
+            complete: (res) => resolve(res.data),
+            error:(err) => reject(err)
+        });
+    })
+}
 
 
 // ****************************************************************************
+// écran chargement 
 
-// Loading screen
-const loadingScreen = {
-    template:`
-        <div>
-            <div class="w-100 h-100 d-flex flex-column justify-content-center align-items-center" id = "loading">
-                <div class="row">
-                    <div class="spinner-border" role="status">
-                        <p class="sr-only">Loading...</p>
-                    </div>
-                </div>
-                <div class="row">
-                    <p>Chargement des données en cours ...</p>
-                </div>
+class LoadingScreen {
+    constructor() {
+        this.state = {
+            isLoading:false
+        }
+    }
+    show() {
+        this.state.isLoading = true
+    }
+    hide() {
+        this.state.isLoading = false
+    }
+}
+
+let loadingScreen = new LoadingScreen();
+
+
+// écran de chargement
+const Loading = {
+    template: `
+    <div id = "loading" class="w-100 h-100 d-flex flex-column justify-content-center align-items-center">
+        <div class="row">
+            <div class="spinner-border" role="status">
+                <p class="sr-only">Loading...</p>
             </div>
         </div>
+        <div class="row">
+            <p>Chargement en cours ...</p>
+        </div>
+    </div>
     `
-};
+}
 
 
 // ****************************************************************************
 
+// geocode
+const api_adresse = "https://api-adresse.data.gouv.fr/search/?q=";
+const api_admin = "https://geo.api.gouv.fr/departements?";
 
 
 const SearchBar = {
@@ -981,7 +1000,6 @@ const LeafletMap = {
                 zoomSnap: 0.25,
                 zoomControl: false,
             },
-            data: fs_tab_fetched,
             circlesStyle: {
                 radius:5.5,
                 color:'white',
@@ -1172,22 +1190,16 @@ const LeafletMap = {
             // window.history.pushState({},'',this.url);            
         },
     },
-    mounted() {
-        session_data = JSON.parse(sessionStorage.getItem("session_local"));
-
-        if(!session_data) {
-            init();
-            this.loadDep();
-        } else {
-            this.geom_dep = JSON.parse(sessionStorage.getItem("LocalGeomDep"));
-            page_status = "loaded";
-            loading.remove();
-            this.data = session_data;
-            fs_tab_fetched = session_data;
-        };
-
+    async mounted() {
         this.initMap();
-        this.checkPageStatus();
+        loadingScreen.show() // pendant le chargement, active le chargement d'écran
+        this.loadDep();
+        this.data = await getData(dataUrl); // charge les données
+
+        this.createFeatures(this.data);
+
+        loadingScreen.hide(); // enlève le chargement d'écran
+
     },
     methods: {
         initMap() {
@@ -1221,7 +1233,6 @@ const LeafletMap = {
                 window.history.pushState({},'',url)
             });
             
-            // this.iframe ? map.setZoom(6) : map.setZoom(5.55);
             L.tileLayer(this.mapOptions.url,{ attribution:this.mapOptions.attribution }).addTo(map);
             this.map = map;
             // zoom control, fullscreen & scale bar
@@ -1287,13 +1298,11 @@ const LeafletMap = {
             // enDeveloppement.addTo(map);
 
             // on click remove previous clicked marker
-            map.on("click",(e) => {
+            map.on("click",() => {
                 event.stopPropagation();
-                // this.clickedMarkerLayer.clearLayers();
                 this.clearURLParams();
                 this.clearMap()
-
-            })
+            });
         },
         loadDep() {
             fetch("data/geom_dep.geojson")
@@ -1522,7 +1531,7 @@ const LeafletMap = {
                 break;
                 case "click":
                     let id = params.get("id_fs");
-                    let fs = fs_tab_fetched.filter(e => e.id_fs == id)[0];
+                    let fs = this.data.filter(e => e.id_fs == id)[0];
                     this.displayInfo(fs);                    
                     center = this.map.getCenter();
                     this.map.setView([center.lat, fs.longitude]);
@@ -1537,50 +1546,50 @@ const LeafletMap = {
                 return ifFalse;
             };
         },
-        // check if data from drive has been loaded 
-        checkPageStatus() {
-            if(page_status == undefined) {
-                window.setTimeout(this.checkPageStatus,10);
-            } else {
-                // check if app loaded in an iframe
-                this.iframe ? this.sidebar.open("home") : this.sidebar.open("search-tab"); 
-                // focus on search bar
-                // document.getElementById("search-field").focus();
+        createFeatures(fs_tab_fetched) {
+            // check if app loaded in an iframe
+            this.iframe ? this.sidebar.open("home") : this.sidebar.open("search-tab"); 
+            // focus on search bar
+            // document.getElementById("search-field").focus();
 
-                let circleMarkersLayer = L.layerGroup({});
+            let circleMarkersLayer = L.layerGroup({});
 
-                for(let i=0; i<fs_tab_fetched.length; i++) {
-                    e = fs_tab_fetched[i];
+            for(let i=0; i<fs_tab_fetched.length; i++) {
+                e = fs_tab_fetched[i];
 
-                    let circle = L.circleMarker([e.latitude, e.longitude], this.circlesStyle);
-                    circle.setStyle({fillColor:this.getMarkerColor(e.type)})
-                    circle.content = e;
+                let circle = L.circleMarker([e.latitude, e.longitude], this.circlesStyle);
+                circle.setStyle({fillColor:this.getMarkerColor(e.type)})
+                circle.content = e;
 
-                    let circleAnchor = L.circleMarker([e.latitude, e.longitude], {
-                        radius:20,
-                        fillOpacity:0,
-                        opacity:0
-                    }).on("mouseover", (e) => { 
-                        this.onMouseover(e.sourceTarget.content);
-                        this.getMarkertoHover(e.sourceTarget.content.id_fs)
-                    }).on("mouseout", () => { 
-                        this.onMouseOut();
-                    }).on("click", (e) => { 
-                        L.DomEvent.stopPropagation(e);
-                        this.displayInfo(e.sourceTarget.content);
-                    });
-                    circleAnchor.content = e;
-                    circleMarkersLayer.addLayer(circle);
-                    circleMarkersLayer.addLayer(circleAnchor);
-                }
-
-                this.map.addLayer(circleMarkersLayer);
-
-                this.checkURLParams();
+                let circleAnchor = L.circleMarker([e.latitude, e.longitude], {
+                    radius:20,
+                    fillOpacity:0,
+                    opacity:0
+                }).on("mouseover", (e) => { 
+                    this.onMouseover(e.sourceTarget.content);
+                    this.getMarkertoHover(e.sourceTarget.content.id_fs)
+                }).on("mouseout", () => { 
+                    this.onMouseOut();
+                }).on("click", (e) => { 
+                    L.DomEvent.stopPropagation(e);
+                    this.displayInfo(e.sourceTarget.content);
+                });
+                circleAnchor.content = e;
+                circleMarkersLayer.addLayer(circle);
+                circleMarkersLayer.addLayer(circleAnchor);
             }
+
+            this.map.addLayer(circleMarkersLayer);
+
+            this.checkURLParams();
         },
     }
 };
+
+
+// ****************************************************************************
+// ****************************************************************************
+
 
 const routes = [
     {
@@ -1597,12 +1606,35 @@ const routes = [
 ];
 
 const router = new VueRouter({
-    // mode:'history',
     routes // raccourci pour `routes: routes`
 })
 
-// finale instance vue
-const vm = new Vue({
-    router,
+
+// ****************************************************************************
+// ****************************************************************************
+
+const App = {
+    template: 
+        `<div>
+            <loading id="loading" v-if="state.isLoading"></loading>
+            <router-view/>
+        </div>
+    `,
+    components: {
+        'loading':Loading,
+    },
+    data() {
+        return {
+            state:loadingScreen.state 
+        }
+    }
+}
+
+// instance vue
+new Vue({
     el: '#app',
+    router:router,
+    components: {
+        'app': App,
+    },
 });
