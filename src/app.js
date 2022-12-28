@@ -385,10 +385,6 @@ const FichePDF = {
 
         L.control.scale({ position: 'bottomright', imperial:false }).addTo(map);
 
-        // let tooltipContent = `
-        // <span class='leaflet-tooltip-header ${this.tooltipType}'>${fs.lib_fs}</span>
-        // <span class='leaflet-tooltip-body'>${fs.code_postal} ${fs.lib_com}</span>`;
-
         new L.marker(coords, {
             icon: L.icon({
                 iconUrl: './img/picto_siege.png',
@@ -509,7 +505,7 @@ const FichePDF = {
 };
 
 
-// ****************************************************************************
+// Card et boutons de contrôles card ****************************************************************************
 
 const CardControlBtn = {
     props:["icon","text"],
@@ -532,9 +528,6 @@ const CardControlBtn = {
 };
 
 
-// ****************************************************************************
-
-
 const CardTemplate = {
     props: ['fs', 'cardToHover', 'collapse'],
     data () {
@@ -555,11 +548,6 @@ const CardTemplate = {
         } else {
             this.showInfo = this.showInfo;
         }
-        document.addEventListener("selectionchange",event=>{
-            // this.showInfo = false;
-            // let selection = document.getSelection ? document.getSelection().toString() :  document.selection.createRange().toString() ;
-            // console.log(selection);
-        })
     },
     methods: {
         getClass() {
@@ -602,10 +590,6 @@ const CardTemplate = {
                 duration:1,
             });
         },
-        print(fs) {
-            const id = fs.matricule;
-            this.$htmlToPaper(id);
-        },
         getPdf() {
             matricule = this.fs.matricule;
             this.$router.push({name: 'fiche', params: { matricule: matricule, fs:this.fs }});
@@ -614,7 +598,6 @@ const CardTemplate = {
             event.stopPropagation()
             let linkToShare = `${url.origin}/france_services/?qtype=click&matricule=${this.fs.matricule}`;
             navigator.clipboard.writeText(linkToShare);
-            // let copiedTooltip = document.getElementsByClassName("copied-tooltip")[0];
             this.showTooltip = true;
         },
         tooltipOff() {
@@ -711,7 +694,6 @@ const CardTemplate = {
                     <div class="card-controls">
                         <control-btn :icon="'search-plus'" :text="'Zoom'" @click.native="zoomOnMap"></control-btn>
                         <control-btn :icon="'arrows-alt'" :text="'Déplacer sur'" @click.native="flyOnMap"></control-btn>
-                        <!--<control-btn :icon="'print'" :text="'Imprimer'" @click.native="print(fs)"></control-btn>-->
                         <control-btn :icon="'file-pdf'" :text="'Télécharger'" @click.native="getPdf"></control-btn>
                         <control-btn :icon="'clipboard'" :text="'Partager'" @click.native="copyLink" @mouseout.native="tooltipOff"></control-btn>
                         <span class="copied-tooltip" v-if="showTooltip">Lien copié!</span>
@@ -779,51 +761,11 @@ const Slider = {
 
 // ****************************************************************************
 
-const resultsCountComponent = {
-    props:['nbResults','type'],
-    computed: {
-        styleSheet() {
-            return {
-                background:this.color
-            }
-        },
-        color() {
-            switch (this.type) {
-                case "siege":
-                    return "rgb(41,49,115)";
-                case "bus":
-                    return "#00ac8c";
-                case "antenne":
-                    return "#5770be";
-            }
-        },
-        text() {
-            switch (this.type) {
-                case "siege":
-                    return 'fixe';
-                case "bus":
-                    return "itinérante";
-                case "antenne":
-                    return "antenne";
-            }
-        }
-    },
-    template: `
-        <span class="nb-result-per-type" :style="styleSheet">
-            <b>{{ nbResults }}</b> {{ text }}<span v-if="nbResults>1">s</span>
-        </span>
-    `
-}
-
-
-// ****************************************************************************
-
 const LeafletSidebar = {
     components: {
         'search-group':SearchBar,
         'card':CardTemplate,
         'slider':Slider,
-        'result-count':resultsCountComponent,
     },
     props: ['fromParent', 'cardToHover', 'nbFs','searchTypeFromMap'],
     data() {
@@ -859,12 +801,6 @@ const LeafletSidebar = {
         }
     },
     methods: {
-        fsCounter(category) {
-            final_count = this.nbFs.filter(e => {
-                return e.type == category
-            }).length;
-            return final_count;
-        },
         countResultByType(type) {
             let nb = this.fromParent.filter(e => {
                 return e.type == type
@@ -882,7 +818,6 @@ const LeafletSidebar = {
             // emit search result from child to parent (map)
             this.$emit("searchResult",result);
             this.searchResult = result;
-            // this.searchType = result.resultType;
         },
         getSearchType(e) {
             this.searchType = e;
@@ -892,19 +827,6 @@ const LeafletSidebar = {
         },
         zoomOnResults() {
             this.$emit('zoomOnResults')
-        },
-        countNbCategory(number,category) {
-            setTimeout(() => {
-                final_count = this.data.filter(e => {
-                    return e.format_fs == category
-                }).length;
-                this.interval = setInterval(() => {
-                    number++;
-                    if(number>=final_count) {
-                        clearInterval(this.interval)
-                    }
-                }, .01)
-            }, 500);
         },
         radiusVal(e) {
             this.$emit('bufferRadius',e);
@@ -942,11 +864,6 @@ const LeafletSidebar = {
                         <div class="header-logo">
                             <img src="img/logo_FranceServices-01.png" id="programme-logo">
                         </div>
-                        <!--<div class="row">
-                            <card-number :nb="fsCounter('Siège')" :category="'Siège'" text="structures"></card-number>
-                            <card-number :nb="fsCounter('Antenne')" :category="'Antenne'" text="antennes"></card-number>
-                            <card-number :nb="fsCounter('Bus')" :category="'Bus'" text="bus"></card-number>
-                        </div>-->
                         <p>France services est un nouveau modèle d’accès aux services publics pour les Français. L’objectif est de permettre à chaque citoyen d’accéder aux services publics du quotidien dans un lieu unique : réaliser sa demande de carte grise, remplir sa déclaration de revenus pour les impôts sur internet ou encore effectuer sa demande d’APL. Des agents polyvalents et formés sont présents dans la France services la plus proche de chez vous pour vous accompagner dans ces démarches.</p>
                         <p>France services est un programme piloté par le <a href="https://www.cohesion-territoires.gouv.fr/" target="_blank">ministère de la Cohésion des territoires et des Relations avec les collectivités territoriales</a> via l'Agence nationale de la cohésion des territoires (ANCT).</p>
                         <button type="button" class="card-btn btn btn-outline-primary btn-home-tab" @click="openSearchPanel">
