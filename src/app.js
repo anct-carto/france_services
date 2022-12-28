@@ -391,7 +391,7 @@ const FichePDF = {
                 iconSize: [40, 40],
                 iconAnchor: [20, 40]
             })
-        }).addTo(map)
+        }).addTo(map);
 
         setTimeout(() => {
             let router = this.$router;
@@ -722,7 +722,7 @@ const Slider = {
             const val = this.radiusVal;
             const min = this.minRadiusVal;
             const max = this.maxRadiusVal;
-            let pctValue = Number((val-min)*100/(max-min));
+            const pctValue = Number((val-min)*100/(max-min));
 
             bubble.style.left = `calc(${pctValue}% + (${5 - pctValue * 0.6}px))`;
         }
@@ -738,10 +738,10 @@ const Slider = {
     },
     methods: {
         emitRadius() {
-                if(params.has("qlatlng")) {
-                    params.set("qr",this.radiusVal);
-                    window.history.pushState({},'',url);
-                };
+            if(params.has("qlatlng")) {
+                params.set("qr",this.radiusVal);
+                window.history.pushState({},'',url);
+            };
             this.$emit("radiusVal",this.radiusVal);      
         },
     },
@@ -767,7 +767,7 @@ const LeafletSidebar = {
         'card':CardTemplate,
         'slider':Slider,
     },
-    props: ['fromParent', 'cardToHover', 'nbFs','searchTypeFromMap'],
+    props: ['sourceData', 'cardToHover','searchTypeFromMap'],
     data() {
         return {
             show:false,
@@ -789,7 +789,7 @@ const LeafletSidebar = {
         }
     },
     watch: {
-        fromParent() {
+        sourceData() {
             this.show = true;
             this.collapse = false;
         },
@@ -802,7 +802,7 @@ const LeafletSidebar = {
     },
     methods: {
         countResultByType(type) {
-            let nb = this.fromParent.filter(e => {
+            let nb = this.sourceData.filter(e => {
                 return e.type == type
             }).length;
             return nb
@@ -889,9 +889,9 @@ const LeafletSidebar = {
                             <hr/>
                             <slider @radiusVal="radiusVal" v-if="params.get('qtype')=='address'"></slider>
                         </div>
-                        <div id="search-results-header" v-if="fromParent.length>0">
+                        <div id="search-results-header" v-if="sourceData.length>0">
                             <span id="nb-results" v-if="params.get('qtype')!='click'">
-                                <b>{{ fromParent.length }}</b> résultat<span v-if="fromParent.length>1">s</span>
+                                <b>{{ sourceData.length }}</b> résultat<span v-if="sourceData.length>1">s</span>
                             </span>
                             <button class="card-btn action btn btn-outline-primary btn"
                                     style='float:right;margin-top:5px'
@@ -901,7 +901,7 @@ const LeafletSidebar = {
                                 Voir les résultats
                             </button>
                         </div>
-                        <div id="results" v-if="fromParent.length >0">
+                        <div id="results" v-if="sourceData.length >0">
                             <div style="margin-bottom:15px" v-if="params.get('qtype')!='click'">
                                 <result-count :nbResults="nbResults.siege" 
                                             :type="'siege'" 
@@ -917,14 +917,14 @@ const LeafletSidebar = {
                                 </result-count>
                             </div>
                             <card v-if="show"
-                                v-for="(fs, index) in fromParent"
+                                v-for="(fs, index) in sourceData"
                                 :collapse="collapse"
                                 :fs="fs" :key="index"
                                 :cardToHover="cardToHover"
                                 @hoverOnMap="getHoveredCard">
                             </card>
                         </div>
-                        <p style="text-align:center"v-if="Array.isArray(fromParent) & fromParent.length==0">
+                        <p style="text-align:center"v-if="Array.isArray(sourceData) & sourceData.length==0">
                             <br>Aucun résultat ... Veuillez ajuster le rayon de recherche
                         </p>
                     </div>
@@ -966,17 +966,16 @@ let markerToHover;
 const LeafletMap = {
     template: `
         <div>
-            <sidebar :fromParent="fs_cards" 
+            <sidebar ref="sidebar"
+                     :sourceData="fs_cards" 
                      :cardToHover="hoveredMarker"
-                     :nbFs="data"
                      :searchTypeFromMap="searchType"
                      @markerToHover="getMarkertoHover" 
                      @bufferRadius="updateBuffer" 
                      @searchResult="getSearchResult"
                      @openSearchPanel="openSearchPanel"
                      @zoomOnResults="zoomOnResults"
-                     @clearMap="clearMap"
-                     ref="sidebar">
+                     @clearMap="clearMap">
             </sidebar>
             <div id="mapid" ref="map"></div>
         </div>
@@ -1043,7 +1042,6 @@ const LeafletMap = {
             if ( window.location === window.parent.location ) {	  
                 return true;
             } else {	  
-                // console.log("iframe : false")
                 return false;
             };
         },
@@ -1202,21 +1200,6 @@ const LeafletMap = {
 
         this.initMap();
         this.checkPageStatus();
-
-        // this.map.on("click", (e) => {
-        //     console.log(e);
-        //     fetch(`https://api-adresse.data.gouv.fr/reverse/?lon=${e.latlng.lng}&lat=${e.latlng.lat}`)
-        //     .then(res => res.json())
-        //     .then(res => {
-        //         e = {
-        //             resultType:'address',
-        //             resultCoords:[e.latlng.lat, e.latlng.lng],
-        //             resultLabel:res.features[0].properties.label
-        //         };
-        //         this.getSearchResult(e)
-        //     })
-        // });
-
     },
     methods: {
         initMap() {
