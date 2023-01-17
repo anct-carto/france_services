@@ -625,7 +625,8 @@ const CardTemplate = {
                 </p>
                 <div class="card-controls">
                     <control-btn :icon="'search-plus'" :text="'Zoom'" @click.native="zoomOnMap"></control-btn>
-                    <control-btn :icon="'arrows-alt'" :text="'Déplacer sur'" @click.native="flyOnMap"></control-btn>
+                    <control-btn :icon="'arrows-alt'" :text="'Centrer'" @click.native="flyOnMap"></control-btn>
+                    <control-btn :icon="'route'" :text="'Itinéraire'" @click.native="getMapsRoute"></control-btn>
                     <control-btn :icon="'file-pdf'" :text="'Télécharger'" @click.native="getPdf"></control-btn>
                     <control-btn :icon="'clipboard'" :text="'Partager'" @click.native="copyLink" @mouseout.native="tooltipOff"></control-btn>
                     <span class="copied-tooltip" v-if="showTooltip">Lien copié!</span>
@@ -693,6 +694,11 @@ const CardTemplate = {
             map.panTo([this.fs.latitude, this.fs.longitude], {
                 duration:1,
             });
+        },
+        getMapsRoute() {
+            let gmapsUrl = `https://www.google.com/maps/dir//${this.fs.latitude},${this.fs.longitude}/@${this.fs.latitude},${this.fs.longitude},17z/`;
+            console.log(gmapsUrl);
+            window.open(gmapsUrl,"_blank").focus();
         },
         getPdf() {
             id_fs = this.fs.id_fs;
