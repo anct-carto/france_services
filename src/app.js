@@ -1108,6 +1108,9 @@ const LeafletMap = {
                 })
             }
         },
+        fsLayer() {
+            return L.layerGroup({className:'fs-layer'}).addTo(this.map);
+        },
         clickedMarkerLayer() {
             return L.layerGroup({className:'clicked-marker-layer'}).addTo(this.map);
         },
@@ -1505,9 +1508,7 @@ const LeafletMap = {
                 this.marker = e.resultCoords;
                 this.marker_tooltip = e.resultLabel;
             } else {
-                if(this.geomDep) {
-                    this.depFilter = e.resultCode;
-                }
+                this.depFilter = e.resultCode;
             }
         },
         updateBuffer(new_radius) {
@@ -1579,8 +1580,6 @@ const LeafletMap = {
             // check if app loaded in an iframe
             this.iframe ? this.sidebar.open("home") : this.sidebar.open("search-tab"); 
 
-            let circleMarkersLayer = L.layerGroup({});
-
             for(let i=0; i<fs_tab_fetched.length; i++) {
                 e = fs_tab_fetched[i];
 
@@ -1602,11 +1601,11 @@ const LeafletMap = {
                     this.displayInfo(e.sourceTarget.content);
                 });
                 circleAnchor.content = e;
-                circleMarkersLayer.addLayer(circle);
-                circleMarkersLayer.addLayer(circleAnchor);
+                this.fsLayer.addLayer(circle);
+                this.fsLayer.addLayer(circleAnchor);
             }
 
-            this.map.addLayer(circleMarkersLayer);
+            this.map.addLayer(this.fsLayer);
 
             this.checkURLParams();
         },
