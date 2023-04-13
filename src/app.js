@@ -1088,11 +1088,7 @@ const LeafletMap = {
             return L.layerGroup({className:'buffer-layer'}).addTo(this.map)
         },
         iframe() {
-            if ( window.location === window.parent.location ) {	  
-                return true;
-            } else {	  
-                return false;
-            };
+            window.location === window.parent.location ? true : false
         },
     },
     watch: {
@@ -1577,8 +1573,6 @@ const LeafletMap = {
         createFeatures(fs_tab_fetched) {
             // check if app loaded in an iframe
             this.iframe ? this.sidebar.open("home") : this.sidebar.open("search-tab"); 
-            // focus on search bar
-            // document.getElementById("search-field").focus();
 
             let circleMarkersLayer = L.layerGroup({});
 
