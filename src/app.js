@@ -1088,7 +1088,7 @@ const LeafletMap = {
             return L.layerGroup({className:'buffer-layer'}).addTo(this.map)
         },
         iframe() {
-            window.location === window.parent.location ? true : false
+            return window.location === window.parent.location ? true : false
         },
     },
     watch: {
