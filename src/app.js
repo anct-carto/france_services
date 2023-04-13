@@ -1023,7 +1023,7 @@ const LeafletMap = {
                      @markerToHover="getMarkertoHover" 
                      @bufferRadius="updateBuffer" 
                      @searchResult="getSearchResult"
-                     @openSearchPanel="openSearchPanel"
+                     @openSearchPanel="sidebar.open('search-tab')"
                      @zoomOnResults="zoomOnResults"
                      @clearMap="clearMap">
             </sidebar>
@@ -1232,7 +1232,7 @@ const LeafletMap = {
             // purge object from distance property (computed in 'address' search)
             this.fs_cards.forEach(e => delete e.distance);
 
-            let filteredFeature = this.geom_dep.features.filter(e => {
+            let filteredFeature = this.geomDep.features.filter(e => {
                 return e.properties.insee_dep === this.depFilter;
             });
             let depMask = L.mask(filteredFeature, {
@@ -1256,7 +1256,7 @@ const LeafletMap = {
         this.initMap();
 
         loadingScreen.show() // pendant le chargement, active le chargement d'écran
-        this.geom_dep = await this.loadGeom("data/geom_dep.geojson")
+        this.geomDep = await this.loadGeom("data/geom_dep.geojson")
         this.data = await getData(dataUrl); // charge les données
 
         this.createFeatures(this.data);
@@ -1318,7 +1318,7 @@ const LeafletMap = {
                 this.clearURLParams();
                 this.clearMap()
             });
-            
+
             // legend
             const legend = L.control({position: 'topright'});
 
@@ -1505,7 +1505,7 @@ const LeafletMap = {
                 this.marker = e.resultCoords;
                 this.marker_tooltip = e.resultLabel;
             } else {
-                if(this.geom_dep) {
+                if(this.geomDep) {
                     this.depFilter = e.resultCode;
                 }
             }
@@ -1529,7 +1529,7 @@ const LeafletMap = {
             };
         },
         zoomOnResults() {
-            let bounds = this.fs_cards.map(e => {
+            const bounds = this.fs_cards.map(e => {
                 return [e.latitude,e.longitude]
             });
             this.flyToBoundsWithOffset(bounds);
@@ -1546,9 +1546,6 @@ const LeafletMap = {
         },
         clearURLParams() {
            this.url.search = '';
-        },
-        openSearchPanel() {
-            this.sidebar.open('search-tab')
         },
         checkURLParams() {
             let queryType = this.params.get("qtype");
