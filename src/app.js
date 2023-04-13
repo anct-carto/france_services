@@ -697,7 +697,6 @@ const CardTemplate = {
         },
         getMapsRoute() {
             let gmapsUrl = `https://www.google.com/maps/dir//${this.fs.latitude},${this.fs.longitude}/@${this.fs.latitude},${this.fs.longitude},17z/`;
-            console.log(gmapsUrl);
             window.open(gmapsUrl,"_blank").focus();
         },
         getPdf() {
@@ -770,6 +769,44 @@ const Slider = {
         },
     },
 };
+
+// ****************************************************************************
+
+const resultsCountComponent = {
+    props:['nbResults','type'],
+    computed: {
+        styleSheet() {
+            return {
+                background:this.color
+            }
+        },
+        color() {
+            switch (this.type) {
+                case "siege":
+                    return "rgb(41,49,115)";
+                case "bus":
+                    return "#00ac8c";
+                case "antenne":
+                    return "#5770be";
+            }
+        },
+        text() {
+            switch (this.type) {
+                case "siege":
+                    return 'fixe';
+                case "bus":
+                    return "itinérante";
+                case "antenne":
+                    return "antenne";
+            }
+        }
+    },
+    template: `
+        <span class="nb-result-per-type" :style="styleSheet">
+            <b>{{ nbResults }}</b> {{ text }}<span v-if="nbResults>1">s</span>
+        </span>
+    `
+}
 
 
 // ****************************************************************************
@@ -897,6 +934,7 @@ const LeafletSidebar = {
         'search-group':SearchBar,
         'card':CardTemplate,
         'slider':Slider,
+        'result-count':resultsCountComponent,
     },
     props: ['sourceData', 'cardToHover','searchTypeFromMap'],
     data() {
@@ -1126,11 +1164,7 @@ const LeafletMap = {
             });
 
             // if radius in url then take url radius
-            if(this.params.has('radius')) {
-                searchRadius = this.params.get('radius')
-            } else {
-                searchRadius = this.searchRadius
-            }
+            this.params.has('radius') ? searchRadius = this.params.get('radius') : searchRadius = this.searchRadius
 
             this.fs_cards = closest_fs.filter(e => {
                 return e.distance <= searchRadius
@@ -1198,7 +1232,7 @@ const LeafletMap = {
     async mounted() {
         this.initMap();
         loadingScreen.show() // pendant le chargement, active le chargement d'écran
-        this.loadDep();
+        this.geom_dep = await this.loadGeom("data/geom_dep.geojson")
         this.data = await getData(dataUrl); // charge les données
 
         this.createFeatures(this.data);
@@ -1207,6 +1241,11 @@ const LeafletMap = {
 
     },
     methods: {
+        async loadGeom(file) {
+            const res = await fetch(file);
+            const data = await res.json();
+            return data
+        },
         initMap() {
             this.params = params;
             this.url = url;
@@ -1307,14 +1346,6 @@ const LeafletMap = {
                 event.stopPropagation();
                 this.clearURLParams();
                 this.clearMap()
-            });
-        },
-        loadDep() {
-            fetch("data/geom_dep.geojson")
-            .then(res => res.json())
-            .then(res => {
-                this.geom_dep = res;
-                sessionStorage.setItem("LocalGeomDep",JSON.stringify(res))
             });
         },
         flyToBoundsWithOffset(layer) {
@@ -1526,14 +1557,12 @@ const LeafletMap = {
                     let resultLabel = params.get("qlabel");    
                     this.marker = resultMarker;
                     this.marker_tooltip = resultLabel;                    
-                    this.sidebar.open("search-tab");
                     break;
                 case "admin":
                     let resultCodeDep = params.get("qcode");
-                    console.log(resultCodeDep);
                     this.depFilter = resultCodeDep;
-                    this.sidebar.open("search-tab");
-                break;
+                    // this.sidebar.open("search-tab");
+                    break;
                 case "click":
                     let id = params.get("id_fs");
                     let fs = this.data.filter(e => e.id_fs == id)[0];
@@ -1542,14 +1571,8 @@ const LeafletMap = {
                     this.map.setView([center.lat, fs.longitude]);
                     break;
             };
-        },
-        // check if app is loaded in an iframe
-        checkWindowLocation(ifTrue, ifFalse) {
-            if ( window.location === window.parent.location ) {	  
-                return ifTrue;
-            } else {	  
-                return ifFalse;
-            };
+            // this.sidebar.open("search-tab");
+
         },
         createFeatures(fs_tab_fetched) {
             // check if app loaded in an iframe
