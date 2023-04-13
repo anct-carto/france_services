@@ -1043,6 +1043,20 @@ const LeafletMap = {
                     position: "left",
                 },
             },
+            styles:{
+                features:{
+                    default:{
+                        radius:5.5,
+                        color:'white',
+                        weight:1.2,
+                        fillOpacity:1,
+                        className:'fs-marker',        
+                    }
+                },
+                tooltip:{
+
+                }
+            },
             mapOptions: {
                 url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
                 attribution: '<a href="https://cartotheque.anct.gouv.fr/cartes" target="_blank">ANCT</a> | Fond cartographique &copy;<a href="https://stadiamaps.com/">Stadia Maps</a> &copy;<a href="https://openmaptiles.org/">OpenMapTiles</a> &copy;<a href="http://openstreetmap.org">OpenStreetMap</a>',
@@ -1240,7 +1254,7 @@ const LeafletMap = {
     },
     async mounted() {
         this.initMap();
-        
+
         loadingScreen.show() // pendant le chargement, active le chargement d'écran
         this.geom_dep = await this.loadGeom("data/geom_dep.geojson")
         this.data = await getData(dataUrl); // charge les données
@@ -1297,6 +1311,14 @@ const LeafletMap = {
             }).addTo(this.map);
             L.control.scale({ position: 'bottomright', imperial:false }).addTo(map);
             
+            
+            // on click remove previous clicked marker
+            map.on("click",() => {
+                event.stopPropagation();
+                this.clearURLParams();
+                this.clearMap()
+            });
+            
             // legend
             const legend = L.control({position: 'topright'});
 
@@ -1332,22 +1354,6 @@ const LeafletMap = {
                 return div;
             };
             legend.addTo(map);
-
-            // texte en cours de développement
-            // const enDeveloppement = L.control({position: 'topleft'});
-            // enDeveloppement.onAdd = function() {
-            //     let div = L.DomUtil.create('div','en-developpement');
-            //     div.innerHTML += `<h5 style="font-family:'Marianne-Bold';color:red;background-color:white; padding:5px; border: solid 1px red">/!\\ DEVELOPPEMENT EN COURS /!\\</h5>`;
-            //     return div;
-            // };
-            // enDeveloppement.addTo(map);
-
-            // on click remove previous clicked marker
-            map.on("click",() => {
-                event.stopPropagation();
-                this.clearURLParams();
-                this.clearMap()
-            });
         },
         flyToBoundsWithOffset(layer) {
             let offset = document.querySelector('.leaflet-sidebar-content').getBoundingClientRect().width;
@@ -1534,7 +1540,6 @@ const LeafletMap = {
             this.clickedMarkerLayer.clearLayers();
             this.maskLayer.clearLayers();
             this.adressLayer.clearLayers();
-            // this.map.flyTo(this.mapOptions.center, this.mapOptions.zoom, {duration:0.5});
 
             // purge url params
             this.clearURLParams();
@@ -1546,33 +1551,31 @@ const LeafletMap = {
             this.sidebar.open('search-tab')
         },
         checkURLParams() {
-            let params = this.params;
-            queryType = params.get("qtype");
+            let queryType = this.params.get("qtype");
 
             if(queryType) {
                 this.sidebar.open("search-tab");
             }
             switch (queryType) {
                 case "address":
-                    let resultMarker = params.get("qlatlng").split(",");
-                    let resultLabel = params.get("qlabel");    
+                    let resultMarker = this.params.get("qlatlng").split(",");
+                    let resultLabel = this.params.get("qlabel");    
                     this.marker = resultMarker;
                     this.marker_tooltip = resultLabel;                    
                     break;
                 case "admin":
-                    let resultCodeDep = params.get("qcode");
+                    let resultCodeDep = this.params.get("qcode");
                     this.depFilter = resultCodeDep;
                     // this.sidebar.open("search-tab");
                     break;
                 case "click":
-                    let id = params.get("id_fs");
+                    let id = this.params.get("id_fs");
                     let fs = this.data.filter(e => e.id_fs == id)[0];
                     this.displayInfo(fs);                    
                     center = this.map.getCenter();
                     this.map.setView([center.lat, fs.longitude]);
                     break;
             };
-            // this.sidebar.open("search-tab");
 
         },
         createFeatures(fs_tab_fetched) {
@@ -1618,22 +1621,20 @@ const LeafletMap = {
 // ****************************************************************************
 
 
-const routes = [
-    {
-        name:'carte',
-        path:'/',
-        component: LeafletMap
-    },
-    {
-        name: 'fiche',
-        path: '/fiche:id_fs', 
-        component: FichePDF, 
-        props:true,
-    },
-];
-
 const router = new VueRouter({
-    routes // raccourci pour `routes: routes`
+    routes:[
+        {
+            name:'carte',
+            path:'/',
+            component: LeafletMap
+        },
+        {
+            name: 'fiche',
+            path: '/fiche:id_fs', 
+            component: FichePDF, 
+            props:true,
+        },
+    ]
 })
 
 
@@ -1685,3 +1686,12 @@ function preventDrag(div, map) {
         map.dragging.enable();
     });
 };
+
+// texte en cours de développement
+// const enDeveloppement = L.control({position: 'topleft'});
+// enDeveloppement.onAdd = function() {
+//     let div = L.DomUtil.create('div','en-developpement');
+//     div.innerHTML += `<h5 style="font-family:'Marianne-Bold';color:red;background-color:white; padding:5px; border: solid 1px red">/!\\ DEVELOPPEMENT EN COURS /!\\</h5>`;
+//     return div;
+// };
+// enDeveloppement.addTo(map);
