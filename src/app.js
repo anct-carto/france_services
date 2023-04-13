@@ -1035,6 +1035,14 @@ const LeafletMap = {
     },
     data() {
         return {
+            config:{
+                sidebar:{
+                    container: "sidebar",
+                    autopan: true,
+                    closeButton: true,
+                    position: "left",
+                },
+            },
             mapOptions: {
                 url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
                 attribution: '<a href="https://cartotheque.anct.gouv.fr/cartes" target="_blank">ANCT</a> | Fond cartographique &copy;<a href="https://stadiamaps.com/">Stadia Maps</a> &copy;<a href="https://openmaptiles.org/">OpenMapTiles</a> &copy;<a href="http://openstreetmap.org">OpenStreetMap</a>',
@@ -1059,7 +1067,6 @@ const LeafletMap = {
             marker_tooltip: null,
             depFilter:null,
             fs_cards:'',
-            sidebar:null,
             map:null,
             markerToHover:{
                 coords:'',
@@ -1071,6 +1078,12 @@ const LeafletMap = {
     computed: {
         adressLayer() {
             return L.layerGroup({className:'address-marker-layer'}).addTo(this.map)
+        },
+        sidebar() {
+            const sidebar = window.L.control.sidebar(this.config.sidebar).addTo(this.map);
+            // prevent drag over the sidebar and the legend
+            preventDrag(sidebar, this.map);
+            return sidebar
         },
         buffer() {
             if(this.marker) {
@@ -1227,6 +1240,7 @@ const LeafletMap = {
     },
     async mounted() {
         this.initMap();
+        
         loadingScreen.show() // pendant le chargement, active le chargement d'écran
         this.geom_dep = await this.loadGeom("data/geom_dep.geojson")
         this.data = await getData(dataUrl); // charge les données
@@ -1282,15 +1296,6 @@ const LeafletMap = {
                 forcePseudoFullScreen:true,
             }).addTo(this.map);
             L.control.scale({ position: 'bottomright', imperial:false }).addTo(map);
-
-            // sidebar
-            const sidebar = window.L.control.sidebar({
-                autopan: true, 
-                closeButton: true, 
-                container: "sidebar", 
-                position: "left"
-            }).addTo(map);
-            this.sidebar = sidebar;
             
             // legend
             const legend = L.control({position: 'topright'});
@@ -1667,3 +1672,16 @@ new Vue({
 // ****************************************************************************
 
 // Fonctions universelles à l'ensemble du code
+
+// empêcher déplacement de la carte en maintenant/glissant le pointeur de souris sur sidebar
+function preventDrag(div, map) {
+    // Disable dragging when user's cursor enters the element
+    div.getContainer().addEventListener('mouseover', function () {
+        map.dragging.disable();
+    });
+
+    // Re-enable dragging when user's cursor leaves the element
+    div.getContainer().addEventListener('mouseout', function () {
+        map.dragging.enable();
+    });
+};
