@@ -1031,10 +1031,15 @@ const LeafletMap = {
                         weight:1.2,
                         fillOpacity:1,
                         className:'fs-marker',        
-                    }
+                    },
                 },
                 tooltip:{
-
+                    default:{},
+                    clicked:{
+                        direction:'top',
+                        opacity:1,
+                        permanent:true, 
+                    }
                 }
             },
             mapOptions: {
@@ -1413,12 +1418,7 @@ const LeafletMap = {
                     iconAnchor: [20, 40]
                 })
             }).addTo(this.map);
-
-            marker.bindTooltip(tooltipContent, {
-                direction:'top',
-                opacity:1,
-                permanent:true, 
-            });
+            marker.bindTooltip(tooltipContent, this.styles.tooltip.clicked);
 
             [glow15,glow10,marker].forEach(el => this.clickedMarkerLayer.addLayer(el))
 
@@ -1455,11 +1455,7 @@ const LeafletMap = {
                     ${featureToHover.code_postal} ${featureToHover.lib_com}
                 </span>`
 
-            hoveredFeature.bindTooltip(tooltipContent, {
-                direction:'top',
-                opacity:1,
-                permanent:true, 
-            })
+            hoveredFeature.bindTooltip(tooltipContent, this.styles.tooltip.clicked)
         },
         getSearchResult(e) {
             // get result infos emitted from search group
