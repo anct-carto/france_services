@@ -885,7 +885,7 @@ const LeafletSidebar = {
                                 :collapse="collapse"
                                 :fs="fs" :key="index"
                                 :cardToHover="cardToHover"
-                                @mouseover.native="$emit('markerToHover',fs.id_fs)"
+                                @mouseover.native="$emit('hoverFeature',fs.id_fs)"
                                 @mouseout.native="$emit('clearHoveredFeature')">
                             </card>
                         </div>
@@ -1436,7 +1436,6 @@ const LeafletMap = {
             window.history.pushState({},'',url);
         },
         hoverFeature(id) {
-            console.log(id);
             this.hoveredLayer.clearLayers();
             const featureToHover = this.data.find(e => e.id_fs == id);
             const hoveredFeature = new L.marker([featureToHover.latitude,featureToHover.longitude],{
