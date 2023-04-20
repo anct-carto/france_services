@@ -1081,7 +1081,6 @@ const LeafletMap = {
             marker_tooltip: null,
             depFilter:null,
             fs_cards:'',
-            map:null,
             markerToHover:{
                 coords:'',
             },
@@ -1090,9 +1089,6 @@ const LeafletMap = {
         }
     },
     computed: {
-        adressLayer() {
-            return L.layerGroup({className:'address-marker-layer'}).addTo(this.map)
-        },
         sidebar() {
             const sidebar = window.L.control.sidebar(this.config.sidebar).addTo(this.map);
             // prevent drag over the sidebar and the legend
@@ -1113,6 +1109,9 @@ const LeafletMap = {
         },
         clickedMarkerLayer() {
             return L.layerGroup({className:'clicked-marker-layer'}).addTo(this.map);
+        },
+        adressLayer() {
+            return L.layerGroup({className:'address-marker-layer'}).addTo(this.map)
         },
         maskLayer() {
             return L.layerGroup({className:'buffer-layer'}).addTo(this.map)
