@@ -1437,6 +1437,9 @@ const LeafletMap = {
         },
         hoverFeature(id) {
             this.hoveredLayer.clearLayers();
+            this.getMarkerToPin(id).addTo(this.hoveredLayer)
+        },
+        getMarkerToPin(id) {
             const featureToHover = this.data.find(e => e.id_fs == id);
             const hoveredFeature = new L.marker([featureToHover.latitude,featureToHover.longitude],{
                 className:'fs-marker',
@@ -1445,7 +1448,8 @@ const LeafletMap = {
                     iconSize: [40, 40],
                     iconAnchor: [20, 40]
                 })
-            }).addTo(this.hoveredLayer);
+            })
+            // .addTo(this.hoveredLayer);
 
             const tooltipContent = `
                 <span class='leaflet-tooltip-header ${this.getTooltipCategory(featureToHover.type)}'>
@@ -1456,6 +1460,8 @@ const LeafletMap = {
                 </span>`
 
             hoveredFeature.bindTooltip(tooltipContent, this.styles.tooltip.clicked)
+
+            return hoveredFeature
         },
         getSearchResult(e) {
             // get result infos emitted from search group
