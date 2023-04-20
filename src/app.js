@@ -751,13 +751,8 @@ const Slider = {
         }
     },
     mounted() {
-        if(params.has("qr")) {
-            this.radiusVal = params.get("qr");
-        } else {
-            this.radiusVal = 10;
-        };
+        params.has("qr") ? this.radiusVal = params.get("qr") : this.radiusVal = 10;
         this.emitRadius();
-        
     },
     methods: {
         emitRadius() {
@@ -1086,9 +1081,54 @@ const LeafletMap = {
             },
             searchRadius:10,
             searchType:'',
+            urlSearchParams:params,
         }
     },
     computed: {
+        map() {
+            this.url = url;
+            let defaultZoomLevel = this.iframe ? 6 : 5.55;
+
+            // const map = L.map('mapid', this.mapOptions);
+            const map = new L.map('mapid', {
+                center: [params.get("lat") || 46.413220, params.get("lng") || 1.219482],
+                zoom:params.get("z") || defaultZoomLevel,
+                preferCanvas: true,
+                zoomControl:false
+            });
+            
+            L.tileLayer(this.mapOptions.url,{ attribution:this.mapOptions.attribution }).addTo(map);
+            // zoom control, fullscreen & scale bar
+            L.control.zoom({position: 'topright'}).addTo(map);
+            L.control.fullscreen({
+                position:'topright',
+                forcePseudoFullScreen:true,
+            }).addTo(map);
+            L.control.scale({ position: 'bottomright', imperial:false }).addTo(map);
+            
+            // on click remove previous clicked marker
+            map.on("click",() => {
+                event.stopPropagation();
+                this.clearURLParams();
+                this.clearMap();
+            });
+            
+            // Get url parameters
+            map.on("moveend", () => {
+                // get map params
+                lat = map.getCenter().lat.toFixed(6);
+                lng = map.getCenter().lng.toFixed(6);
+                zoom = map.getZoom();
+
+                params.set("lat",lat);
+                params.set("lng",lng);
+                params.set("z",zoom);
+             
+                window.history.pushState({},'',url)
+            });
+
+            return map;
+        },
         sidebar() {
             const sidebar = window.L.control.sidebar(this.config.sidebar).addTo(this.map);
             // prevent drag over the sidebar and the legend
@@ -1189,7 +1229,7 @@ const LeafletMap = {
             });
 
             // if radius in url then take url radius
-            this.params.has('radius') ? searchRadius = this.params.get('radius') : searchRadius = this.searchRadius
+            this.urlSearchParams.has('radius') ? searchRadius = this.urlSearchParams.get('radius') : searchRadius = this.searchRadius
 
             this.fs_cards = closest_fs.filter(e => {
                 return e.distance <= searchRadius
@@ -1212,11 +1252,11 @@ const LeafletMap = {
 
             this.searchType = "address"
             // setup url params
-            this.params.set('qtype','address');
-            this.params.set('qlatlng',this.marker);
-            this.params.set('qlabel',this.marker_tooltip);
-            this.params.set('qr',this.searchRadius);
-            window.history.pushState({},'',this.url);
+            this.urlSearchParams.set('qtype','address');
+            this.urlSearchParams.set('qlatlng',this.marker);
+            this.urlSearchParams.set('qlabel',this.marker_tooltip);
+            this.urlSearchParams.set('qr',this.searchRadius);
+            window.history.pushState({},'',url);
         },
         depFilter() {
             // clear address layers (buffer + pin address)
@@ -1247,115 +1287,65 @@ const LeafletMap = {
             this.flyToBoundsWithOffset(new L.GeoJSON(filteredFeature));
             // setup url params
             this.clearURLParams();
-            this.params.set('qtype','admin');
-            this.params.set('qcode',this.depFilter);
+            this.urlSearchParams.set('qtype','admin');
+            this.urlSearchParams.set('qcode',this.depFilter);
             let qlabel = filteredFeature[0].properties.lib_dep;
-            this.params.set('qlabel',qlabel);
+            this.urlSearchParams.set('qlabel',qlabel);
             // window.history.pushState({},'',this.url);            
         },
     },
     async mounted() {
-        this.initMap();
-
         loadingScreen.show() // pendant le chargement, active le chargement d'écran
+
+        // ajoute une légende
+        const legend = L.control({position: 'topright'});
+
+        legend.onAdd = function () {
+            let expand = false;
+            var div = L.DomUtil.create('div', 'leaflet-legend');
+            div.title = "Légende";
+            div.ariaLabel = "Légende";
+
+            let content_default = "<i class='la la-list' aria-label='Légende'></i>";
+            div.innerHTML += content_default;
+            
+            div.addEventListener("click", () => {
+                event.stopPropagation()
+                if(expand === false) {
+                    expand = true;
+                    // here we can fill the legend with colors, strings and whatever
+                    div.innerHTML = `<span style="font-family:'Marianne-Bold'">Type de structure</span><br>`;
+                    div.innerHTML += `<span class="leaflet-legend-marker-siege"></span><span> Site principal</span><br>`;
+                    div.innerHTML += `<span class="leaflet-legend-marker-bus"></span><span> Bus itinérant</span><br>`;
+                    div.innerHTML += `<span class="leaflet-legend-marker-antenne"></span><span> Antenne</span><br>`;
+                } else if (expand == true) {
+                    expand = false;
+                    div.innerHTML = content_default;
+                };
+                this.map.on("click", ()=>{
+                    if(expand === true) {
+                        expand = false
+                        div.innerHTML = content_default;
+                    };
+                });
+            });
+            return div;
+        };
+        legend.addTo(this.map);
+        
+
         this.geomDep = await this.loadGeom("data/geom_dep.geojson")
         this.data = await getData(dataUrl); // charge les données
 
         this.createFeatures(this.data);
 
         loadingScreen.hide(); // enlève le chargement d'écran
-
     },
     methods: {
         async loadGeom(file) {
             const res = await fetch(file);
             const data = await res.json();
             return data
-        },
-        initMap() {
-            this.params = params;
-            this.url = url;
-
-            searchQuery = document.getElementById('search-field');
-            searchQuery.value = params.get("qlabel") || "";
-
-            let defaultZoomLevel = this.iframe ? 6 : 5.55;
-
-            // const map = L.map('mapid', this.mapOptions);
-            const map = new L.map('mapid', {
-                center: [params.get("lat") || 46.413220, params.get("lng") || 1.219482],
-                zoom:params.get("z") || defaultZoomLevel,
-                preferCanvas: true,
-                zoomControl:false
-            });
-
-            // Get url parameters
-            map.on("moveend", () => {
-                // get map params
-                lat = map.getCenter().lat.toFixed(6);
-                lng = map.getCenter().lng.toFixed(6);
-                zoom = map.getZoom();
-
-                params.set("lat",lat);
-                params.set("lng",lng);
-                params.set("z",zoom);
-             
-                window.history.pushState({},'',url)
-            });
-            
-            L.tileLayer(this.mapOptions.url,{ attribution:this.mapOptions.attribution }).addTo(map);
-            this.map = map;
-            // zoom control, fullscreen & scale bar
-            L.control.zoom({position: 'topright'}).addTo(map);
-            L.control.fullscreen({
-                position:'topright',
-                forcePseudoFullScreen:true,
-            }).addTo(this.map);
-            L.control.scale({ position: 'bottomright', imperial:false }).addTo(map);
-            
-            
-            // on click remove previous clicked marker
-            map.on("click",() => {
-                event.stopPropagation();
-                this.clearURLParams();
-                this.clearMap()
-            });
-
-            // legend
-            const legend = L.control({position: 'topright'});
-
-            legend.onAdd = function (map) {
-                let expand = false;
-                var div = L.DomUtil.create('div', 'leaflet-legend');
-                div.title = "Légende";
-                div.ariaLabel = "Légende";
-
-                let content_default = "<i class='la la-list' aria-label='Légende'></i>";
-                div.innerHTML += content_default;
-                
-                div.addEventListener("click", () => {
-                    event.stopPropagation()
-                    if(expand === false) {
-                        expand = true;
-                        // here we can fill the legend with colors, strings and whatever
-                        div.innerHTML = `<span style="font-family:'Marianne-Bold'">Type de structure</span><br>`;
-                        div.innerHTML += `<span class="leaflet-legend-marker-siege"></span><span> Site principal</span><br>`;
-                        div.innerHTML += `<span class="leaflet-legend-marker-bus"></span><span> Bus itinérant</span><br>`;
-                        div.innerHTML += `<span class="leaflet-legend-marker-antenne"></span><span> Antenne</span><br>`;
-                    } else if (expand == true) {
-                        expand = false;
-                        div.innerHTML = content_default;
-                    };
-                    map.on("click", ()=>{
-                        if(expand === true) {
-                            expand = false
-                            div.innerHTML = content_default;
-                        };
-                    });
-                });
-                return div;
-            };
-            legend.addTo(map);
         },
         flyToBoundsWithOffset(layer) {
             let offset = document.querySelector('.leaflet-sidebar-content').getBoundingClientRect().width;
@@ -1430,12 +1420,12 @@ const LeafletMap = {
 
             // setup url params
             this.clearURLParams();
-            this.params.set("lat", this.map.getCenter().lat.toFixed(6))
-            this.params.set("lng", this.map.getCenter().lng.toFixed(6))
-            this.params.set("z", this.map.getZoom())
-            this.params.set("qtype","click");
-            this.params.set("id_fs",fs.id_fs);
-            window.history.pushState({},'',this.url);
+            this.urlSearchParams.set("lat", this.map.getCenter().lat.toFixed(6))
+            this.urlSearchParams.set("lng", this.map.getCenter().lng.toFixed(6))
+            this.urlSearchParams.set("z", this.map.getZoom())
+            this.urlSearchParams.set("qtype","click");
+            this.urlSearchParams.set("id_fs",fs.id_fs);
+            window.history.pushState({},'',url);
         },
         // styles
         getMarkerColor(type) {
@@ -1545,28 +1535,30 @@ const LeafletMap = {
             this.clearURLParams();
         },
         clearURLParams() {
-           this.url.search = '';
+           url.search = '';
         },
         checkURLParams() {
-            let queryType = this.params.get("qtype");
+            let queryType = this.urlSearchParams.get("qtype");
+            searchQuery = document.getElementById('search-field');
+            searchQuery.value = this.urlSearchParams.get("qlabel") || "";
 
             if(queryType) {
                 this.sidebar.open("search-tab");
             }
             switch (queryType) {
                 case "address":
-                    let resultMarker = this.params.get("qlatlng").split(",");
-                    let resultLabel = this.params.get("qlabel");    
+                    let resultMarker = this.urlSearchParams.get("qlatlng").split(",");
+                    let resultLabel = this.urlSearchParams.get("qlabel");    
                     this.marker = resultMarker;
                     this.marker_tooltip = resultLabel;                    
                     break;
                 case "admin":
-                    let resultCodeDep = this.params.get("qcode");
+                    let resultCodeDep = this.urlSearchParams.get("qcode");
                     this.depFilter = resultCodeDep;
                     // this.sidebar.open("search-tab");
                     break;
                 case "click":
-                    let id = this.params.get("id_fs");
+                    let id = this.urlSearchParams.get("id_fs");
                     let fs = this.data.filter(e => e.id_fs == id)[0];
                     this.displayInfo(fs);                    
                     center = this.map.getCenter();
