@@ -541,9 +541,7 @@ const CardTemplate = {
             title="Cliquer pour afficher plus d'informations"
             :id="fs.id_fs"
             @click="showInfo = !showInfo" 
-            :class="getHoveredCard()" 
-            @mouseover="hoverOnMap"
-            @mouseout="stopHoverMap">
+            :class="getHoveredCard()">
         <div class="card-header" :class="getClass()">
             <div class="card-text">
                 <i :class="getFontIcon()"></i> 
@@ -674,12 +672,6 @@ const CardTemplate = {
             } else {
                 return "card"
             }
-        },
-        hoverOnMap() {
-            this.$emit('hoverOnMap', this.fs.id_fs);
-        },
-        stopHoverMap() {
-            this.$emit('hoverOnMap', '');
         },
         zoomOnMap() {
             event.stopPropagation();
@@ -893,7 +885,8 @@ const LeafletSidebar = {
                                 :collapse="collapse"
                                 :fs="fs" :key="index"
                                 :cardToHover="cardToHover"
-                                @hoverOnMap="getHoveredCard">
+                                @mouseover.native="$emit('markerToHover',fs.id_fs)"
+                                @mouseout.native="$emit('clearHoveredFeature')">
                             </card>
                         </div>
                         <p style="text-align:center"v-if="Array.isArray(sourceData) & sourceData.length==0">
@@ -971,13 +964,6 @@ const LeafletSidebar = {
             }).length;
             return nb
         },
-        getHoveredCard(id) {
-            if(id) {
-                this.$emit('markerToHover', id);
-            } else {
-                this.$emit('markerToHover', '');
-            }
-        },
         getSearchResult(result) {
             // emit search result from child to parent (map)
             this.$emit("searchResult",result);
@@ -1006,8 +992,6 @@ const LeafletSidebar = {
 
 // init vue-leaflet
 
-let markerToHover;
-
 const LeafletMap = {
     template: `
         <div>
@@ -1015,7 +999,8 @@ const LeafletMap = {
                      :sourceData="resultList" 
                      :cardToHover="hoveredMarker"
                      :searchTypeFromMap="searchType"
-                     @markerToHover="getMarkertoHover" 
+                     @hoverFeature="hoverFeature" 
+                     @clearHoveredFeature="hoveredLayer.clearLayers()"
                      @bufferRadius="updateBuffer" 
                      @searchResult="getSearchResult"
                      @openSearchPanel="sidebar.open('search-tab')"
@@ -1076,9 +1061,6 @@ const LeafletMap = {
             marker_tooltip: null,
             depFilter:null,
             resultList:'',
-            markerToHover:{
-                coords:'',
-            },
             searchRadius:10,
             searchType:'',
             urlSearchParams:params,
@@ -1154,6 +1136,9 @@ const LeafletMap = {
             return L.layerGroup({className:'address-marker-layer'}).addTo(this.map)
         },
         maskLayer() {
+            return L.layerGroup({className:'buffer-layer'}).addTo(this.map)
+        },
+        hoveredLayer() {
             return L.layerGroup({className:'buffer-layer'}).addTo(this.map)
         },
         iframe() {
@@ -1347,33 +1332,56 @@ const LeafletMap = {
             const data = await res.json();
             return data
         },
+        createFeatures(fs_tab_fetched) {
+            // check if app loaded in an iframe
+            this.iframe ? this.sidebar.open("home") : this.sidebar.open("search-tab"); 
+
+            for(let i=0; i<fs_tab_fetched.length; i++) {
+                e = fs_tab_fetched[i];
+
+                let circle = L.circleMarker([e.latitude, e.longitude], this.circlesStyle);
+                circle.setStyle({fillColor:this.getMarkerColor(e.type)})
+                circle.content = e;
+
+                // zone tampon invisible autour du marqueur pour le sélectionner facilement
+                let circleAnchor = L.circleMarker([e.latitude, e.longitude], {
+                    radius:20,
+                    fillOpacity:0,
+                    opacity:0
+                }).on("mouseover", (e) => {
+                    const id = e.sourceTarget.content.id_fs;
+                    this.hoverFeature(id)
+                    // send hovered marker's ID to children cards 
+                    if(this.resultList) { this.hoveredMarker = id; };  
+                }).on("mouseout", () => { 
+                    this.onMouseOut();
+                    this.hoveredMarker = '';
+                }).on("click", (e) => { 
+                    L.DomEvent.stopPropagation(e);
+                    this.displayInfo(e.sourceTarget.content);
+                });
+                circleAnchor.content = e;
+                this.fsLayer.addLayer(circle);
+                this.fsLayer.addLayer(circleAnchor);
+            }
+
+            this.map.addLayer(this.fsLayer);
+
+            this.checkURLParams();
+        },
         flyToBoundsWithOffset(layer) {
             let offset = document.querySelector('.leaflet-sidebar-content').getBoundingClientRect().width;
             this.map.flyToBounds(layer, {paddingTopLeft: [offset, 0], duration:0.75})
         },
-        onMouseover(fs) {
-            this.markerToHover.coords = [fs.latitude, fs.longitude];
-            this.markerToHover.lib = fs.lib_fs;
-            
-            id = fs.id_fs;
-            if(this.resultList) {
-                this.hoveredMarker = id; // send hovered marker's ID to children cards 
-            };
-        },
         onMouseOut() {
-            this.hoveredMarker = '';
-            this.markerToHover.coords = '';
-            // this.markerToHover.lib = '';
-            this.getMarkertoHover('');  
+            this.hoveredLayer.clearLayers();
         },
         displayInfo(fs) {
             // empêcher le déclenchement de la réinitialisation si cliqué
 
             this.sidebar.open('search-tab');          
             // send info of the one clicked point to children (cards)
-            if(fs.distance) {
-                delete fs.distance;
-            };
+            if(fs.distance) { delete fs.distance; };
             this.resultList = [fs];
             
             // add white stroke to clicked
@@ -1427,69 +1435,32 @@ const LeafletMap = {
             this.urlSearchParams.set("id_fs",fs.id_fs);
             window.history.pushState({},'',url);
         },
-        // styles
-        getMarkerColor(type) {
-            switch (type) {
-                case "Siège":
-                    return "rgb(41,49,115)";
-                case "Antenne":
-                    return "#5770be";
-                case "Bus":
-                    return "#00ac8c";
-            };
-        },
-        getIconCategory(type) {
-            if(type === "Siège") {
-                return './img/picto_siege.png'
-            } else if(type === "Antenne"){
-                return './img/picto_antenne.png'
-            } 
-            else if(type === "Bus"){
-                return './img/picto_itinerante.png'
-            }
-        },
-        getTooltipCategory(type) {
-            if(type === "Siège") {
-                return 'siege'
-            } else if(type === "Antenne") {
-                return 'antenne'
-            } else if(type === "Bus") {
-                return 'bus'
-            }
-        },
-        getMarkertoHover(id) {
-            if (id) {
-                let fs = this.data.filter(e => {
-                    return e.id_fs == id;
-                })[0];
+        hoverFeature(id) {
+            console.log(id);
+            this.hoveredLayer.clearLayers();
+            const featureToHover = this.data.find(e => e.id_fs == id);
+            const hoveredFeature = new L.marker([featureToHover.latitude,featureToHover.longitude],{
+                className:'fs-marker',
+                icon:L.icon({
+                    iconUrl:this.getIconCategory(featureToHover.type),  
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 40]
+                })
+            }).addTo(this.hoveredLayer);
 
-                this.markerToHover.coords =  [fs.latitude, fs.longitude];
-                let type = fs.type;
+            const tooltipContent = `
+                <span class='leaflet-tooltip-header ${this.getTooltipCategory(featureToHover.type)}'>
+                    ${featureToHover.lib_fs}
+                </span>
+                <span class='leaflet-tooltip-body'>
+                    ${featureToHover.code_postal} ${featureToHover.lib_com}
+                </span>`
 
-                markerToHover = L.marker(this.markerToHover.coords, {
-                    className:'fs-marker',
-                    icon:L.icon({
-                        iconUrl:this.getIconCategory(type),  
-                        iconSize: [40, 40],
-                        iconAnchor: [20, 40]
-                    })
-                }).addTo(this.map);
-                
-                let tooltipContent = `
-                                <span class='leaflet-tooltip-header ${this.getTooltipCategory(type)}'>${fs.lib_fs}</span>
-                                <span class='leaflet-tooltip-body'>${fs.code_postal} ${fs.lib_com}</span>`
-
-                markerToHover.bindTooltip(tooltipContent, {
-                    direction:'top',
-                    opacity:1,
-                    permanent:true, 
-                });
-
-            } else {
-                markerToHover.removeFrom(this.map);
-                this.markerToHover.coords = '';
-                this.markerToHover.lib = '';
-            }
+            hoveredFeature.bindTooltip(tooltipContent, {
+                direction:'top',
+                opacity:1,
+                permanent:true, 
+            })
         },
         getSearchResult(e) {
             // get result infos emitted from search group
@@ -1526,7 +1497,6 @@ const LeafletMap = {
         },
         clearMap() {
             this.resultList = '';
-            this.markerToHover.coordinates = '';
             this.clickedMarkerLayer.clearLayers();
             this.maskLayer.clearLayers();
             this.adressLayer.clearLayers();
@@ -1566,39 +1536,36 @@ const LeafletMap = {
                     break;
             };
 
+        },        
+        // styles
+        getMarkerColor(type) {
+            switch (type) {
+                case "Siège":
+                    return "rgb(41,49,115)";
+                case "Antenne":
+                    return "#5770be";
+                case "Bus":
+                    return "#00ac8c";
+            };
         },
-        createFeatures(fs_tab_fetched) {
-            // check if app loaded in an iframe
-            this.iframe ? this.sidebar.open("home") : this.sidebar.open("search-tab"); 
-
-            for(let i=0; i<fs_tab_fetched.length; i++) {
-                e = fs_tab_fetched[i];
-
-                let circle = L.circleMarker([e.latitude, e.longitude], this.circlesStyle);
-                circle.setStyle({fillColor:this.getMarkerColor(e.type)})
-                circle.content = e;
-
-                let circleAnchor = L.circleMarker([e.latitude, e.longitude], {
-                    radius:20,
-                    fillOpacity:0,
-                    opacity:0
-                }).on("mouseover", (e) => { 
-                    this.onMouseover(e.sourceTarget.content);
-                    this.getMarkertoHover(e.sourceTarget.content.id_fs)
-                }).on("mouseout", () => { 
-                    this.onMouseOut();
-                }).on("click", (e) => { 
-                    L.DomEvent.stopPropagation(e);
-                    this.displayInfo(e.sourceTarget.content);
-                });
-                circleAnchor.content = e;
-                this.fsLayer.addLayer(circle);
-                this.fsLayer.addLayer(circleAnchor);
+        getIconCategory(type) {
+            if(type === "Siège") {
+                return './img/picto_siege.png'
+            } else if(type === "Antenne"){
+                return './img/picto_antenne.png'
+            } 
+            else if(type === "Bus"){
+                return './img/picto_itinerante.png'
             }
-
-            this.map.addLayer(this.fsLayer);
-
-            this.checkURLParams();
+        },
+        getTooltipCategory(type) {
+            if(type === "Siège") {
+                return 'siege'
+            } else if(type === "Antenne") {
+                return 'antenne'
+            } else if(type === "Bus") {
+                return 'bus'
+            }
         },
     }
 };
