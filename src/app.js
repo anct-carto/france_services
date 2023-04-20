@@ -1012,7 +1012,7 @@ const LeafletMap = {
     template: `
         <div>
             <sidebar ref="sidebar"
-                     :sourceData="fs_cards" 
+                     :sourceData="resultList" 
                      :cardToHover="hoveredMarker"
                      :searchTypeFromMap="searchType"
                      @markerToHover="getMarkertoHover" 
@@ -1075,7 +1075,7 @@ const LeafletMap = {
             marker: null,
             marker_tooltip: null,
             depFilter:null,
-            fs_cards:'',
+            resultList:'',
             markerToHover:{
                 coords:'',
             },
@@ -1231,7 +1231,7 @@ const LeafletMap = {
             // if radius in url then take url radius
             this.urlSearchParams.has('radius') ? searchRadius = this.urlSearchParams.get('radius') : searchRadius = this.searchRadius
 
-            this.fs_cards = closest_fs.filter(e => {
+            this.resultList = closest_fs.filter(e => {
                 return e.distance <= searchRadius
             }).sort((a,b) => {
                 if(a.distance > b.distance) {
@@ -1264,7 +1264,7 @@ const LeafletMap = {
             this.searchType = "dep";
 
             // filter data with matching departement code and send it to cards
-            this.fs_cards = this.data.filter(e => {
+            this.resultList = this.data.filter(e => {
                 return e.insee_dep == this.depFilter
             }).sort((a,b) => {
                 let compare = 0;
@@ -1272,7 +1272,7 @@ const LeafletMap = {
                 return compare 
             });
             // purge object from distance property (computed in 'address' search)
-            this.fs_cards.forEach(e => delete e.distance);
+            this.resultList.forEach(e => delete e.distance);
 
             let filteredFeature = this.geomDep.features.filter(e => {
                 return e.properties.insee_dep === this.depFilter;
@@ -1356,7 +1356,7 @@ const LeafletMap = {
             this.markerToHover.lib = fs.lib_fs;
             
             id = fs.id_fs;
-            if(this.fs_cards) {
+            if(this.resultList) {
                 this.hoveredMarker = id; // send hovered marker's ID to children cards 
             };
         },
@@ -1374,7 +1374,7 @@ const LeafletMap = {
             if(fs.distance) {
                 delete fs.distance;
             };
-            this.fs_cards = [fs];
+            this.resultList = [fs];
             
             // add white stroke to clicked
             this.clickedMarkerLayer.clearLayers();
@@ -1504,7 +1504,7 @@ const LeafletMap = {
             this.searchRadius = new_radius;
             if(this.buffer) {
                 this.buffer.setRadius(new_radius*1000);
-                this.fs_cards = this.data.filter(e => {
+                this.resultList = this.data.filter(e => {
                     return e.distance <= new_radius
                 }).sort((a,b) => {
                     if(a.distance > b.distance) {
@@ -1519,13 +1519,13 @@ const LeafletMap = {
             };
         },
         zoomOnResults() {
-            const bounds = this.fs_cards.map(e => {
+            const bounds = this.resultList.map(e => {
                 return [e.latitude,e.longitude]
             });
             this.flyToBoundsWithOffset(bounds);
         },
         clearMap() {
-            this.fs_cards = '';
+            this.resultList = '';
             this.markerToHover.coordinates = '';
             this.clickedMarkerLayer.clearLayers();
             this.maskLayer.clearLayers();
