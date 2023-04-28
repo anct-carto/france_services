@@ -999,7 +999,7 @@ const LeafletMap = {
                      :sourceData="resultList" 
                      :cardToHover="hoveredMarker"
                      :searchTypeFromMap="searchType"
-                     @hoverFeature="hoverFeature" 
+                     @hoverFeature="onMouseOver" 
                      @clearHoveredFeature="hoveredLayer.clearLayers()"
                      @bufferRadius="updateBuffer" 
                      @searchResult="getSearchResult"
@@ -1355,7 +1355,7 @@ const LeafletMap = {
                     opacity:0
                 }).on("mouseover", (e) => {
                     const id = e.sourceTarget.content.id_fs;
-                    this.hoverFeature(id)
+                    this.onMouseOver(id)
                     // send hovered marker's ID to children cards 
                     if(this.resultList) { this.hoveredMarker = id; };  
                 }).on("mouseout", () => { 
@@ -1399,27 +1399,10 @@ const LeafletMap = {
                 fillOpacity:1,
                 interactive:false
             };
+
             let glow10 = new L.circleMarker([fs.latitude, fs.longitude], glowStyle, { weight:10 });
-            let glow15 = new L.circleMarker([fs.latitude, fs.longitude], glowStyle, { weight:15 });
-
-            let tooltipContent = `
-                    <span class='leaflet-tooltip-header ${this.getTooltipCategory(fs.type)}'>
-                        ${fs.lib_fs}
-                    </span>
-                    <span class='leaflet-tooltip-body'>
-                        ${fs.code_postal} ${fs.lib_com}
-                    </span>`
-
-            // add marker icon
-            let marker = new L.marker([fs.latitude, fs.longitude], {
-                icon:L.icon({
-                    iconUrl:this.getIconCategory(fs.type),  
-                    iconSize: [40, 40],
-                    iconAnchor: [20, 40]
-                })
-            }).addTo(this.map);
-            marker.bindTooltip(tooltipContent, this.styles.tooltip.clicked);
-
+            let glow15 = new L.circleMarker([fs.latitude, fs.longitude], glowStyle, { weight:15 });          
+            let marker = this.getMarkerToPin(fs.id_fs);
             [glow15,glow10,marker].forEach(el => this.clickedMarkerLayer.addLayer(el))
 
             // remove buffer and address marker
@@ -1435,13 +1418,13 @@ const LeafletMap = {
             this.urlSearchParams.set("id_fs",fs.id_fs);
             window.history.pushState({},'',url);
         },
-        hoverFeature(id) {
+        onMouseOver(id) {
             this.hoveredLayer.clearLayers();
             this.getMarkerToPin(id).addTo(this.hoveredLayer)
         },
         getMarkerToPin(id) {
             const featureToHover = this.data.find(e => e.id_fs == id);
-            const hoveredFeature = new L.marker([featureToHover.latitude,featureToHover.longitude],{
+            const hoveredFeature = L.marker([featureToHover.latitude,featureToHover.longitude],{
                 className:'fs-marker',
                 icon:L.icon({
                     iconUrl:this.getIconCategory(featureToHover.type),  
