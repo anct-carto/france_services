@@ -67,12 +67,8 @@ class LoadingScreen {
             isLoading:false
         }
     }
-    show() {
-        this.state.isLoading = true
-    }
-    hide() {
-        this.state.isLoading = false
-    }
+    show() { this.state.isLoading = true }
+    hide() { this.state.isLoading = false }
 }
 
 let loadingScreen = new LoadingScreen();
@@ -96,11 +92,6 @@ const Loading = {
 
 
 // ****************************************************************************
-
-// geocode
-const api_adresse = "https://api-adresse.data.gouv.fr/search/?q=";
-const api_admin = "https://geo.api.gouv.fr/departements?";
-
 
 const SearchBar = {
     template: `
@@ -165,6 +156,8 @@ const SearchBar = {
             isOpen:false,
             index:0,
             suggestionsList:[],
+            apiAdresse:"https://api-adresse.data.gouv.fr/search/?q=",
+            apiAdmin:"https://geo.api.gouv.fr/departements?",
         }
     },
     computed: {
@@ -231,7 +224,7 @@ const SearchBar = {
             if(val === '') { this.isOpen = false; };
             if (val != undefined && val != '') {
                 if(this.searchType == 'address') {
-                    fetch(`${api_adresse}${val}&autocomplete=1`)
+                    fetch(`${this.apiAdresse}${val}&autocomplete=1`)
                         .then(res => res.json())
                         .then(res => {
                             let suggestions = [];
@@ -247,12 +240,8 @@ const SearchBar = {
                 } else if(this.searchType == 'admin') {
                     let field;
                     let number = val.match(/\d+/);
-                    if(number) {
-                        field = "code="
-                    } else {
-                        field = "nom="
-                    };
-                    fetch(`${api_admin}${field}${val}&autocomplete=1&limit=5`)
+                    number ? field = "code=" : field = "nom="
+                    fetch(`${this.apiAdmin}${field}${val}&autocomplete=1&limit=5`)
                     .then(res => res.json())
                     .then(res => {
                         let suggestions = [];
@@ -1067,7 +1056,7 @@ const LeafletMap = {
             marker: null,
             marker_tooltip: null,
             depFilter:null,
-            resultList:'',
+            resultList:[],
             searchRadius:10,
             searchType:'',
             urlSearchParams:params,
@@ -1271,7 +1260,7 @@ const LeafletMap = {
             this.clearURLParams();
             this.urlSearchParams.set('qtype','admin');
             this.urlSearchParams.set('qcode',this.depFilter);
-            let qlabel = filteredFeature[0].properties.lib_dep;
+            let qlabel = filteredFeature.properties.lib_dep;
             this.urlSearchParams.set('qlabel',qlabel);
             // window.history.pushState({},'',this.url);            
         },
