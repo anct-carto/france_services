@@ -1141,7 +1141,7 @@ const LeafletMap = {
         hoveredLayer() {
             return L.layerGroup({className:'buffer-layer'}).addTo(this.map)
         },
-        iframe() {
+        isIframe() {
             return window.location === window.parent.location ? true : false
         },
     },
@@ -1318,7 +1318,7 @@ const LeafletMap = {
         legend.addTo(this.map);
         
 
-        this.geomDep = await this.loadGeom("data/geom_dep.geojson")
+        this.geomDep = await this.loadGeom("data/geom_dep.geojson");
         this.data = await getData(dataUrl); // charge les données
 
         this.createFeatures(this.data);
@@ -1333,7 +1333,7 @@ const LeafletMap = {
         },
         createFeatures(fs_tab_fetched) {
             // check if app loaded in an iframe
-            this.iframe ? this.sidebar.open("home") : this.sidebar.open("search-tab"); 
+            this.isIframe ? this.sidebar.open("home") : this.sidebar.open("search-tab"); 
 
             for(let i=0; i<fs_tab_fetched.length; i++) {
                 e = fs_tab_fetched[i];
@@ -1414,7 +1414,6 @@ const LeafletMap = {
                     iconAnchor: [20, 40]
                 })
             })
-            // .addTo(this.hoveredLayer);
 
             const tooltipContent = `
                 <span class='leaflet-tooltip-header ${this.getTooltipCategory(featureToHover.type)}'>
