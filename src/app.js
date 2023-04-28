@@ -26,8 +26,7 @@ async function getData(path) {
             data = data.filter(e => e.latitude != 0 & e.latitude != "" & e.longitude != 0 & e.longitude != "" & e.id_fs != "")
             // transformations avant utilisation
             data.forEach(e => {
-                e.itinerance = e["itinerance"].toLowerCase();
-                
+                e.itinerance = e["itinerance"].toLowerCase();               
                 if(e.itinerance == "non" || e.itinerance == "") {
                     if(e.format_fs == "Site principal") {
                         e.type = "Siège";
@@ -1016,6 +1015,22 @@ const LeafletMap = {
     data() {
         return {
             config:{
+                map:{
+                    container:'mapid',
+                    tileLayer:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                    attribution: '<a href="https://cartotheque.anct.gouv.fr/cartes" target="_blank">ANCT</a> | Fond cartographique &copy;<a href="https://stadiamaps.com/">Stadia Maps</a> &copy;<a href="https://openmaptiles.org/">OpenMapTiles</a> &copy;<a href="http://openstreetmap.org">OpenStreetMap</a>',
+                    zoomPosition:'topright',
+                    scalePosition:'bottomright',
+                    initialView:{
+                        zoomControl: false,
+                        zoom: 5.5555,
+                        center: [46.413220, 1.219482],
+                        zoomSnap: 0.025,
+                        minZoom:4.55,
+                        maxZoom:18,
+                        preferCanvas:true,
+                    }
+                },
                 sidebar:{
                     container: "sidebar",
                     autopan: true,
@@ -1048,14 +1063,6 @@ const LeafletMap = {
                     }
                 }
             },
-            mapOptions: {
-                url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                attribution: '<a href="https://cartotheque.anct.gouv.fr/cartes" target="_blank">ANCT</a> | Fond cartographique &copy;<a href="https://stadiamaps.com/">Stadia Maps</a> &copy;<a href="https://openmaptiles.org/">OpenMapTiles</a> &copy;<a href="http://openstreetmap.org">OpenStreetMap</a>',
-                zoom: 6,
-                center: [46.413220, 1.219482],
-                zoomSnap: 0.25,
-                zoomControl: false,
-            },
             hoveredMarker:'',
             marker: null,
             marker_tooltip: null,
@@ -1068,44 +1075,35 @@ const LeafletMap = {
     },
     computed: {
         map() {
-            this.url = url;
             let defaultZoomLevel = this.iframe ? 6 : 5.55;
-
-            // const map = L.map('mapid', this.mapOptions);
-            const map = new L.map('mapid', {
+            const map = new L.map(this.config.map.container,this.config.map.initialView, {
                 center: [params.get("lat") || 46.413220, params.get("lng") || 1.219482],
                 zoom:params.get("z") || defaultZoomLevel,
-                preferCanvas: true,
-                zoomControl:false
             });
-            
-            L.tileLayer(this.mapOptions.url,{ attribution:this.mapOptions.attribution }).addTo(map);
-            // zoom control, fullscreen & scale bar
-            L.control.zoom({position: 'topright'}).addTo(map);
+            L.tileLayer(this.config.map.tileLayer,{ attribution:this.config.map.attribution }).addTo(map);
+            // zoom control, scale bar, fullscreen 
+            L.control.zoom({position: this.config.map.zoomPosition}).addTo(map);
+            L.control.scale({ position: this.config.map.scalePosition, imperial:false }).addTo(map);
             L.control.fullscreen({
                 position:'topright',
                 forcePseudoFullScreen:true,
-            }).addTo(map);
-            L.control.scale({ position: 'bottomright', imperial:false }).addTo(map);
-            
+                title:'Afficher la carte en plein écran'
+            }).addTo(map);           
             // on click remove previous clicked marker
             map.on("click",() => {
                 event.stopPropagation();
                 this.clearURLParams();
                 this.clearMap();
-            });
-            
+            });            
             // Get url parameters
             map.on("moveend", () => {
                 // get map params
-                lat = map.getCenter().lat.toFixed(6);
-                lng = map.getCenter().lng.toFixed(6);
-                zoom = map.getZoom();
-
+                let lat = map.getCenter().lat.toFixed(6);
+                let lng = map.getCenter().lng.toFixed(6);
+                let zoom = map.getZoom();
                 params.set("lat",lat);
                 params.set("lng",lng);
-                params.set("z",zoom);
-             
+                params.set("z",zoom);            
                 window.history.pushState({},'',url);
             });
 
@@ -1283,13 +1281,12 @@ const LeafletMap = {
 
         // ajoute une légende
         const legend = L.control({position: 'topright'});
-
-        legend.onAdd = function () {
+        const map = this.map; // obligatoire pour la légende
+        legend.onAdd = (map) => {
             let expand = false;
             var div = L.DomUtil.create('div', 'leaflet-legend');
             div.title = "Légende";
             div.ariaLabel = "Légende";
-
             let content_default = "<i class='la la-list' aria-label='Légende'></i>";
             div.innerHTML += content_default;
             
@@ -1306,7 +1303,7 @@ const LeafletMap = {
                     expand = false;
                     div.innerHTML = content_default;
                 };
-                this.map.on("click", ()=>{
+                map.on("click", ()=>{
                     if(expand === true) {
                         expand = false
                         div.innerHTML = content_default;
@@ -1317,7 +1314,6 @@ const LeafletMap = {
         };
         legend.addTo(this.map);
         
-
         this.geomDep = await this.loadGeom("data/geom_dep.geojson");
         this.data = await getData(dataUrl); // charge les données
 
@@ -1336,7 +1332,7 @@ const LeafletMap = {
             this.isIframe ? this.sidebar.open("home") : this.sidebar.open("search-tab"); 
 
             for(let i=0; i<fs_tab_fetched.length; i++) {
-                e = fs_tab_fetched[i];
+                let e = fs_tab_fetched[i];
 
                 let circle = L.circleMarker([e.latitude, e.longitude], this.styles.features.default);
                 circle.setStyle({fillColor:this.getMarkerColor(e.type)})
@@ -1345,7 +1341,7 @@ const LeafletMap = {
                 let circleAnchor = L.circleMarker([e.latitude, e.longitude], {
                     radius:20,
                     fillOpacity:0,
-                    opacity:0
+                    opacity:0,
                 }).on("mouseover", (e) => {
                     const id = e.sourceTarget.content.id_fs;
                     this.onMouseOver(id);
@@ -1359,8 +1355,7 @@ const LeafletMap = {
                     this.displayInfo(e.sourceTarget.content);
                 });
                 circleAnchor.content = e;
-                this.fsLayer.addLayer(circle);
-                this.fsLayer.addLayer(circleAnchor);
+                [circle,circleAnchor].forEach(layer => this.fsLayer.addLayer(layer))
             }
 
             this.map.addLayer(this.fsLayer);
