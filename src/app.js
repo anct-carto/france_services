@@ -1264,9 +1264,7 @@ const LeafletMap = {
             // purge object from distance property (computed in 'address' search)
             this.resultList.forEach(e => delete e.distance);
 
-            let filteredFeature = this.geomDep.features.filter(e => {
-                return e.properties.insee_dep === this.depFilter;
-            });
+            let filteredFeature = this.geomDep.features.find(e => e.properties.insee_dep === this.depFilter );
             let depMask = L.mask(filteredFeature, {
                 fillColor:'rgba(0,0,0,.25)',
                 color:'red'
@@ -1275,6 +1273,7 @@ const LeafletMap = {
 
             // pan to dep borders
             this.flyToBoundsWithOffset(new L.GeoJSON(filteredFeature));
+
             // setup url params
             this.clearURLParams();
             this.urlSearchParams.set('qtype','admin');
@@ -1378,6 +1377,10 @@ const LeafletMap = {
             let offset = document.querySelector('.leaflet-sidebar-content').getBoundingClientRect().width;
             this.map.flyToBounds(layer, {paddingTopLeft: [offset, 0], duration:0.75})
         },
+        onMouseOver(id) {
+            this.hoveredLayer.clearLayers();
+            this.getMarkerToPin(id).addTo(this.hoveredLayer)
+        },
         onMouseOut() {
             this.hoveredLayer.clearLayers();
         },
@@ -1391,19 +1394,8 @@ const LeafletMap = {
             
             // add white stroke to clicked
             this.clickedMarkerLayer.clearLayers();
-            let glowStyle = {
-                radius:10,
-                weight:10,
-                color:'rgba(245,245,245,.75)',
-                fillColor:this.getMarkerColor(fs.type),
-                fillOpacity:1,
-                interactive:false
-            };
-
-            let glow10 = new L.circleMarker([fs.latitude, fs.longitude], glowStyle, { weight:10 });
-            let glow15 = new L.circleMarker([fs.latitude, fs.longitude], glowStyle, { weight:15 });          
             let marker = this.getMarkerToPin(fs.id_fs);
-            [glow15,glow10,marker].forEach(el => this.clickedMarkerLayer.addLayer(el))
+            [marker].forEach(el => this.clickedMarkerLayer.addLayer(el))
 
             // remove buffer and address marker
             this.maskLayer.clearLayers();
@@ -1417,10 +1409,6 @@ const LeafletMap = {
             this.urlSearchParams.set("qtype","click");
             this.urlSearchParams.set("id_fs",fs.id_fs);
             window.history.pushState({},'',url);
-        },
-        onMouseOver(id) {
-            this.hoveredLayer.clearLayers();
-            this.getMarkerToPin(id).addTo(this.hoveredLayer)
         },
         getMarkerToPin(id) {
             const featureToHover = this.data.find(e => e.id_fs == id);
