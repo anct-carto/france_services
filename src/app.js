@@ -1106,7 +1106,7 @@ const LeafletMap = {
                 params.set("lng",lng);
                 params.set("z",zoom);
              
-                window.history.pushState({},'',url)
+                window.history.pushState({},'',url);
             });
 
             return map;
@@ -1329,7 +1329,7 @@ const LeafletMap = {
         async loadGeom(file) {
             const res = await fetch(file);
             const data = await res.json();
-            return data
+            return data;
         },
         createFeatures(fs_tab_fetched) {
             // check if app loaded in an iframe
@@ -1347,9 +1347,8 @@ const LeafletMap = {
                     fillOpacity:0,
                     opacity:0
                 }).on("mouseover", (e) => {
-                    console.log(e);
                     const id = e.sourceTarget.content.id_fs;
-                    this.onMouseOver(id)
+                    this.onMouseOver(id);
                     // send hovered marker's ID to children cards 
                     if(this.resultList) { this.hoveredMarker = id; };  
                 }).on("mouseout", () => { 
@@ -1370,11 +1369,11 @@ const LeafletMap = {
         },
         flyToBoundsWithOffset(layer) {
             let offset = document.querySelector('.leaflet-sidebar-content').getBoundingClientRect().width;
-            this.map.flyToBounds(layer, {paddingTopLeft: [offset, 0], duration:0.75})
+            this.map.flyToBounds(layer, {paddingTopLeft: [offset, 0], duration:0.75});
         },
         onMouseOver(id) {
             this.hoveredLayer.clearLayers();
-            this.getMarkerToPin(id).addTo(this.hoveredLayer)
+            this.getMarkerToPin(id).addTo(this.hoveredLayer);
         },
         onMouseOut() {
             this.hoveredLayer.clearLayers();
@@ -1398,9 +1397,9 @@ const LeafletMap = {
 
             // setup url params
             this.clearURLParams();
-            this.urlSearchParams.set("lat", this.map.getCenter().lat.toFixed(6))
-            this.urlSearchParams.set("lng", this.map.getCenter().lng.toFixed(6))
-            this.urlSearchParams.set("z", this.map.getZoom())
+            this.urlSearchParams.set("lat", this.map.getCenter().lat.toFixed(6));
+            this.urlSearchParams.set("lng", this.map.getCenter().lng.toFixed(6));
+            this.urlSearchParams.set("z", this.map.getZoom());
             this.urlSearchParams.set("qtype","click");
             this.urlSearchParams.set("id_fs",fs.id_fs);
             window.history.pushState({},'',url);
@@ -1425,7 +1424,7 @@ const LeafletMap = {
                     ${featureToHover.code_postal} ${featureToHover.lib_com}
                 </span>`
 
-            hoveredFeature.bindTooltip(tooltipContent, this.styles.tooltip.clicked)
+            hoveredFeature.bindTooltip(tooltipContent, this.styles.tooltip.clicked);
 
             return hoveredFeature
         },
@@ -1517,21 +1516,21 @@ const LeafletMap = {
         },
         getIconCategory(type) {
             if(type === "Siège") {
-                return './img/picto_siege.png'
+                return './img/picto_siege.png';
             } else if(type === "Antenne"){
-                return './img/picto_antenne.png'
+                return './img/picto_antenne.png';
             } 
             else if(type === "Bus"){
-                return './img/picto_itinerante.png'
+                return './img/picto_itinerante.png';
             }
         },
         getTooltipCategory(type) {
             if(type === "Siège") {
-                return 'siege'
+                return 'siege';
             } else if(type === "Antenne") {
-                return 'antenne'
+                return 'antenne';
             } else if(type === "Bus") {
-                return 'bus'
+                return 'bus';
             }
         },
     }
