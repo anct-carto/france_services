@@ -103,7 +103,7 @@ const SearchBar = {
                             <input type="radio" name="address" id="adresse-btn" @click="onChange($event)" checked>Adresse
                         </label>
                         <label class="search-type-btn btn btn-outline-primary" aria-label="Rechercher un département" title="Rechercher un département">
-                            <input type="radio" name="admin" id="dep-btn" @click="onChange($event)">Département
+                            <input type="radio" name="dep" id="dep-btn" @click="onChange($event)">Département
                         </label>
                     </div>
                 </div>
@@ -122,7 +122,7 @@ const SearchBar = {
                 </div>
                 <div class="list-group" v-if="isOpen">
                     <div class="list-group-item" v-for="(suggestion, i) in suggestionsList"
-                        @click="onClickSuggest(suggestion)"
+                        @click="onEnter"
                         @keydown.esc="isOpen=false"
                         @mouseover="onMouseover(i)"
                         @mouseout="onMouseLeave"
@@ -237,10 +237,10 @@ const SearchBar = {
                             };
                             this.suggestionsList = suggestions;
                         }).catch(error => console.error(error));
-                } else if(this.searchType == 'admin') {
+                } else if(this.searchType == 'dep') {
                     let field;
                     let number = val.match(/\d+/);
-                    number ? field = "code=" : field = "nom="
+                    number ? field = "code=" : field = "nom=";
                     fetch(`${this.apiAdmin}${field}${val}&autocomplete=1&limit=5`)
                     .then(res => res.json())
                     .then(res => {
@@ -279,48 +279,20 @@ const SearchBar = {
                     this.inputAdress = suggestion.properties.label;
                     // send data
                     this.$emit("searchResult", {
-                        resultType:'address',
+                        resultType:this.searchType,
                         resultCoords: [suggestion.geometry.coordinates[1],suggestion.geometry.coordinates[0]], 
                         resultLabel: suggestion.properties.label
                     })
                 } else {
                     this.inputAdress = suggestion.nom;
                     this.$emit('searchResult', {
-                        resultType:'dep',
-                        resultCode:suggestion.code
+                        resultType:this.searchType,
+                        resultCode:suggestion.code,
                     });
                 }
                 this.suggestionsList = [];
                 this.index = -1;
             }
-        },
-        onClickSuggest(suggestion) {            
-            if(this.searchType == 'address') {
-                // reset search
-                this.inputAdress = suggestion.properties.label;
-                // get address coordinates to pass to map
-                let coordinates = suggestion.geometry.coordinates;
-                let latlng_adress = [coordinates[1], coordinates[0]];
-    
-                // send data
-                this.$emit("searchResult", {
-                    resultType:'address',
-                    resultCoords: latlng_adress, 
-                    resultLabel: this.inputAdress
-                });
-            } else {
-                this.inputAdress = suggestion.nom;
-                // send data
-                this.$emit("searchResult", {
-                    resultType:'dep',
-                    resultCode:suggestion.code,
-                    resultNom:suggestion.nom
-                });                
-            }
-            
-            this.suggestionsList = [];
-            this.isOpen = !this.isOpen;
-
         },
         handleClickOutside(evt) {
             if (!this.$el.contains(evt.target)) {
