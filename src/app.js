@@ -1034,7 +1034,13 @@ const LeafletMap = {
                     },
                 },
                 tooltip:{
-                    default:{},
+                    default:{
+                        radius:5.5,
+                        color:'white',
+                        weight:1.2,
+                        fillOpacity:1,
+                        className:'fs-marker',
+                    },
                     clicked:{
                         direction:'top',
                         opacity:1,
@@ -1049,17 +1055,6 @@ const LeafletMap = {
                 center: [46.413220, 1.219482],
                 zoomSnap: 0.25,
                 zoomControl: false,
-            },
-            circlesStyle: {
-                radius:5.5,
-                color:'white',
-                weight:1.2,
-                fillOpacity:1,
-                className:'fs-marker',
-            },
-            tooltipOptions: {
-                direction:'top',
-                className:'leaflet-tooltip-hovered',
             },
             hoveredMarker:'',
             marker: null,
@@ -1343,9 +1338,8 @@ const LeafletMap = {
             for(let i=0; i<fs_tab_fetched.length; i++) {
                 e = fs_tab_fetched[i];
 
-                let circle = L.circleMarker([e.latitude, e.longitude], this.circlesStyle);
+                let circle = L.circleMarker([e.latitude, e.longitude], this.styles.features.default);
                 circle.setStyle({fillColor:this.getMarkerColor(e.type)})
-                circle.content = e;
 
                 // zone tampon invisible autour du marqueur pour le sélectionner facilement
                 let circleAnchor = L.circleMarker([e.latitude, e.longitude], {
@@ -1353,6 +1347,7 @@ const LeafletMap = {
                     fillOpacity:0,
                     opacity:0
                 }).on("mouseover", (e) => {
+                    console.log(e);
                     const id = e.sourceTarget.content.id_fs;
                     this.onMouseOver(id)
                     // send hovered marker's ID to children cards 
@@ -1371,7 +1366,7 @@ const LeafletMap = {
 
             this.map.addLayer(this.fsLayer);
 
-            this.checkURLParams();
+            this.getURLSearchParams();
         },
         flyToBoundsWithOffset(layer) {
             let offset = document.querySelector('.leaflet-sidebar-content').getBoundingClientRect().width;
@@ -1479,7 +1474,7 @@ const LeafletMap = {
         clearURLParams() {
            url.search = '';
         },
-        checkURLParams() {
+        getURLSearchParams() {
             let queryType = this.urlSearchParams.get("qtype");
             searchQuery = document.getElementById('search-field');
             searchQuery.value = this.urlSearchParams.get("qlabel") || "";
@@ -1501,7 +1496,7 @@ const LeafletMap = {
                     break;
                 case "click":
                     let id = this.urlSearchParams.get("id_fs");
-                    let fs = this.data.filter(e => e.id_fs == id)[0];
+                    let fs = this.data.find(e => e.id_fs == id);
                     this.displayInfo(fs);                    
                     center = this.map.getCenter();
                     this.map.setView([center.lat, fs.longitude]);
