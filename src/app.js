@@ -726,7 +726,6 @@ const Slider = {
             const min = this.minRadiusVal;
             const max = this.maxRadiusVal;
             const pctValue = Number((val-min)*100/(max-min));
-
             bubble.style.left = `calc(${pctValue}% + (${5 - pctValue * 0.6}px))`;
         }
     },
@@ -1363,17 +1362,14 @@ const LeafletMap = {
             this.hoveredLayer.clearLayers();
         },
         displayInfo(fs) {
-            // empêcher le déclenchement de la réinitialisation si cliqué
-
             this.sidebar.open('search-tab');          
             // send info of the one clicked point to children (cards)
             if(fs.distance) { delete fs.distance; };
             this.resultList = [fs];
             
-            // add white stroke to clicked
             this.clickedMarkerLayer.clearLayers();
             let marker = this.getMarkerToPin(fs.id_fs);
-            this.clickedMarkerLayer.addLayer(marker)
+            this.clickedMarkerLayer.addLayer(marker);
 
             // remove buffer and address marker
             this.maskLayer.clearLayers();
