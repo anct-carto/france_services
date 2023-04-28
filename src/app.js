@@ -1389,7 +1389,7 @@ const LeafletMap = {
             // add white stroke to clicked
             this.clickedMarkerLayer.clearLayers();
             let marker = this.getMarkerToPin(fs.id_fs);
-            [marker].forEach(el => this.clickedMarkerLayer.addLayer(el))
+            this.clickedMarkerLayer.addLayer(marker)
 
             // remove buffer and address marker
             this.maskLayer.clearLayers();
