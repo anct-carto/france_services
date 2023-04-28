@@ -46,9 +46,9 @@ async function getData(path) {
 }
 
 // parse csv (ou tableau issu d'un tableau partagé) en json
-function fetchCsv(data_url) {
+function fetchCsv(dataURL) {
     return new Promise((resolve,reject) => {
-        Papa.parse(data_url, {
+        Papa.parse(dataURL, {
             download: true,
             header: true,
             complete: (res) => resolve(res.data),
@@ -90,6 +90,36 @@ const Loading = {
     `
 }
 
+
+// ****************************************************************************
+// écran chargement 
+
+class ErrorScreen {
+    constructor(code) {
+        this.state = {
+            error:false,
+        }
+    }
+    show(code) {
+        this.state.error = true
+        this.state.code=code
+    }
+    hide() {
+        this.state.error = false
+    }
+}
+
+let errorScreen = new ErrorScreen();
+
+const ErrorTemplate = {
+    template: `
+    <div id = "error-screen" class="w-100 h-100 d-flex flex-column justify-content-center align-items-center">
+        <div class="row">
+            <p>Une erreur est survenue. Veuillez réessayer ultérieurement.</p>
+        </div>
+    </div>
+    `
+}
 
 // ****************************************************************************
 
@@ -1239,47 +1269,52 @@ const LeafletMap = {
     async mounted() {
         loadingScreen.show() // pendant le chargement, active le chargement d'écran
 
-        // ajoute une légende
-        const legend = L.control({position: 'topright'});
-        const map = this.map; // obligatoire pour la légende
-        legend.onAdd = (map) => {
-            let expand = false;
-            var div = L.DomUtil.create('div', 'leaflet-legend');
-            div.title = "Légende";
-            div.ariaLabel = "Légende";
-            let content_default = "<i class='la la-list' aria-label='Légende'></i>";
-            div.innerHTML += content_default;
-            
-            div.addEventListener("click", () => {
-                event.stopPropagation()
-                if(expand === false) {
-                    expand = true;
-                    // here we can fill the legend with colors, strings and whatever
-                    div.innerHTML = `<span style="font-family:'Marianne-Bold'">Type de structure</span><br>`;
-                    div.innerHTML += `<span class="leaflet-legend-marker-siege"></span><span> Site principal</span><br>`;
-                    div.innerHTML += `<span class="leaflet-legend-marker-bus"></span><span> Bus itinérant</span><br>`;
-                    div.innerHTML += `<span class="leaflet-legend-marker-antenne"></span><span> Antenne</span><br>`;
-                } else if (expand == true) {
-                    expand = false;
-                    div.innerHTML = content_default;
-                };
-                map.on("click", ()=>{
-                    if(expand === true) {
-                        expand = false
+        try {
+            // ajoute une légende
+            const legend = L.control({position: 'topright'});
+            const map = this.map; // obligatoire pour la légende
+            legend.onAdd = (map) => {
+                let expand = false;
+                var div = L.DomUtil.create('div', 'leaflet-legend');
+                div.title = "Légende";
+                div.ariaLabel = "Légende";
+                let content_default = "<i class='la la-list' aria-label='Légende'></i>";
+                div.innerHTML += content_default;
+                
+                div.addEventListener("click", () => {
+                    event.stopPropagation()
+                    if(expand === false) {
+                        expand = true;
+                        // here we can fill the legend with colors, strings and whatever
+                        div.innerHTML = `<span style="font-family:'Marianne-Bold'">Type de structure</span><br>`;
+                        div.innerHTML += `<span class="leaflet-legend-marker-siege"></span><span> Site principal</span><br>`;
+                        div.innerHTML += `<span class="leaflet-legend-marker-bus"></span><span> Bus itinérant</span><br>`;
+                        div.innerHTML += `<span class="leaflet-legend-marker-antenne"></span><span> Antenne</span><br>`;
+                    } else if (expand == true) {
+                        expand = false;
                         div.innerHTML = content_default;
                     };
+                    map.on("click", ()=>{
+                        if(expand === true) {
+                            expand = false
+                            div.innerHTML = content_default;
+                        };
+                    });
                 });
-            });
-            return div;
-        };
-        legend.addTo(this.map);
-        
-        this.geomDep = await this.loadGeom("data/geom_dep.geojson");
-        this.data = await getData(dataUrl); // charge les données
-
-        this.createFeatures(this.data);
-
-        loadingScreen.hide(); // enlève le chargement d'écran
+                return div;
+            };
+            legend.addTo(this.map);
+            
+            this.geomDep = await this.loadGeom("data/geom_dep.geojson");
+            this.data = await getData(dataUrl); // charge les données
+    
+            this.createFeatures(this.data);
+    
+            loadingScreen.hide(); // enlève le chargement d'écran
+        } catch (error) {
+            console.error(error);
+            errorScreen.show();
+        }
     },
     methods: {
         async loadGeom(file) {
@@ -1423,6 +1458,7 @@ const LeafletMap = {
         },
         clearURLParams() {
            url.search = '';
+           window.history.pushState({},'',url);
         },
         getURLSearchParams() {
             let queryType = this.urlSearchParams.get("qtype");
@@ -1517,15 +1553,18 @@ const App = {
     template: 
         `<div>
             <loading id="loading" v-if="state.isLoading"></loading>
+            <error-screen v-if="state2.error"></error-screen>
             <router-view/>
         </div>
     `,
     components: {
         'loading':Loading,
+        'error-screen':ErrorTemplate,
     },
     data() {
         return {
-            state:loadingScreen.state 
+            state:loadingScreen.state,
+            state2:errorScreen.state,
         }
     }
 }
