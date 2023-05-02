@@ -1054,9 +1054,11 @@ const LeafletMap = {
                 }
             },
             hoveredMarker:'',
-            marker: null,
-            marker_tooltip: null,
-            depFilter:null,
+            addressCoords: null,
+            addressLabel: null,
+            // marker: null,
+            // marker_tooltip: null,
+            depResult:null,
             resultList:'',
             searchRadius:10,
             searchType:'',
@@ -1134,15 +1136,16 @@ const LeafletMap = {
         },
     },
     watch: {
-        marker() {
+        addressCoords() { 
+        // marker() {
             let list_points = [];
             // reset everything : clear layers, previous clicked markers
             this.clearMap();
             
             // drop marker of searched address on map
-            if(this.marker) {
-                let address_marker = L.marker(this.marker)
-                                .bindTooltip(this.marker_tooltip, {
+            if(this.addressCoords) {
+                let address_marker = L.marker(this.addressCoords)
+                                .bindTooltip(this.addressLabel, {
                                     permanent:true, 
                                     direction:"top", 
                                     className:'leaflet-tooltip-result'
@@ -1226,19 +1229,19 @@ const LeafletMap = {
             this.searchType = "address"
             // setup url params
             this.urlSearchParams.set('qtype','address');
-            this.urlSearchParams.set('qlatlng',this.marker);
-            this.urlSearchParams.set('qlabel',this.marker_tooltip);
+            this.urlSearchParams.set('qlatlng',this.addressCoords);
+            this.urlSearchParams.set('qlabel',this.addressLabel);
             this.urlSearchParams.set('qr',this.searchRadius);
             window.history.pushState({},'',url);
         },
-        depFilter() {
+        depResult() {
             // clear address layers (buffer + pin address)
             this.clearMap();
             this.searchType = "dep";
 
             // filter data with matching departement code and send it to cards
             this.resultList = this.data.filter(e => {
-                return e.insee_dep == this.depFilter
+                return e.insee_dep == this.depResult
             }).sort((a,b) => {
                 let compare = 0;
                 a.lib_fs > b.lib_fs ? compare = 1 : compare = 0;
@@ -1247,7 +1250,7 @@ const LeafletMap = {
             // purge object from distance property (computed in 'address' search)
             this.resultList.forEach(e => delete e.distance);
 
-            let filteredFeature = this.geomDep.features.find(e => e.properties.insee_dep === this.depFilter );
+            let filteredFeature = this.geomDep.features.find(e => e.properties.insee_dep === this.depResult );
             let depMask = L.mask(filteredFeature, {
                 fillColor:'rgba(0,0,0,.25)',
                 color:'red'
@@ -1260,7 +1263,7 @@ const LeafletMap = {
             // setup url params
             this.clearURLParams();
             this.urlSearchParams.set('qtype','admin');
-            this.urlSearchParams.set('qcode',this.depFilter);
+            this.urlSearchParams.set('qcode',this.depResult);
             let qlabel = filteredFeature.properties.lib_dep;
             this.urlSearchParams.set('qlabel',qlabel);
             // window.history.pushState({},'',this.url);            
@@ -1417,10 +1420,10 @@ const LeafletMap = {
         getSearchResult(e) {
             // get result infos emitted from search group
             if(e.resultType == "address") {
-                this.marker = e.resultCoords;
-                this.marker_tooltip = e.resultLabel;
+                this.addressCoords = e.resultCoords;
+                this.addressLabel = e.resultLabel;
             } else {
-                this.depFilter = e.resultCode;
+                this.depResult = e.resultCode;
             }
         },
         updateBuffer(new_radius) {
@@ -1470,20 +1473,16 @@ const LeafletMap = {
             }
             switch (queryType) {
                 case "address":
-                    let resultMarker = this.urlSearchParams.get("qlatlng").split(",");
-                    let resultLabel = this.urlSearchParams.get("qlabel");    
-                    this.marker = resultMarker;
-                    this.marker_tooltip = resultLabel;                    
+                    this.addressCoords = this.urlSearchParams.get("qlatlng").split(",");
+                    this.addressLabel = this.urlSearchParams.get("qlabel");    
                     break;
                 case "admin":
-                    let resultCodeDep = this.urlSearchParams.get("qcode");
-                    this.depFilter = resultCodeDep;
-                    // this.sidebar.open("search-tab");
+                    this.depResult = this.urlSearchParams.get("qcode");
                     break;
                 case "click":
                     let id = this.urlSearchParams.get("id_fs");
                     let fs = this.data.find(e => e.id_fs == id);
-                    this.displayInfo(fs);                    
+                    this.displayInfo(fs);
                     center = this.map.getCenter();
                     this.map.setView([center.lat, fs.longitude]);
                     break;
