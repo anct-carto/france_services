@@ -1057,7 +1057,7 @@ const LeafletMap = {
             marker: null,
             marker_tooltip: null,
             depFilter:null,
-            resultList:[],
+            resultList:'',
             searchRadius:10,
             searchType:'',
             urlSearchParams:params,
