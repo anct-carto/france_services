@@ -818,7 +818,7 @@ const LeafletSidebar = {
                             <img src="img/logo_FranceServices-01.png" id="programme-logo">
                         </div>
                         <p>France services est un nouveau modèle d’accès aux services publics pour les Français. L’objectif est de permettre à chaque citoyen d’accéder aux services publics du quotidien dans un lieu unique : réaliser sa demande de carte grise, remplir sa déclaration de revenus pour les impôts sur internet ou encore effectuer sa demande d’APL. Des agents polyvalents et formés sont présents dans la France services la plus proche de chez vous pour vous accompagner dans ces démarches.</p>
-                        <p>France services est un programme piloté par le <a href="https://www.cohesion-territoires.gouv.fr/" target="_blank">ministère de la Cohésion des territoires et des Relations avec les collectivités territoriales</a> via l'Agence nationale de la cohésion des territoires (ANCT).</p>
+                        <p>France services est un programme piloté par le <a href="https://www.cohesion-territoires.gouv.fr/" target="_blank">ministère de la Transition écologique et de la Cohésion des territoires</a> via l'Agence nationale de la cohésion des territoires (ANCT).</p>
                         <button type="button" class="card-btn btn btn-outline-primary btn-home-tab" @click="openSearchPanel">
                             <i class="las la-search"></i>
                             Trouver une France services
