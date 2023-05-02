@@ -1371,9 +1371,6 @@ const LeafletMap = {
             // setup url params
             this.clearURLParams();
             this.setMapExtent();
-            // this.urlSearchParams.set("lat", this.map.getCenter().lat.toFixed(6));
-            // this.urlSearchParams.set("lng", this.map.getCenter().lng.toFixed(6));
-            // this.urlSearchParams.set("z", this.map.getZoom());
             this.urlSearchParams.set("qtype","click");
             this.urlSearchParams.set("id_fs",fs.id_fs);
             window.history.pushState({},'',url);
