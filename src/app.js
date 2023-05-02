@@ -1529,6 +1529,7 @@ const LeafletMap = {
 
 
 const router = new VueRouter({
+    // mode:'history',
     routes:[
         {
             name:'carte',
