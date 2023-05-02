@@ -1088,12 +1088,7 @@ const LeafletMap = {
             // Get url parameters
             map.on("moveend", () => {
                 // get map params
-                let lat = map.getCenter().lat.toFixed(6);
-                let lng = map.getCenter().lng.toFixed(6);
-                let zoom = map.getZoom();
-                params.set("lat",lat);
-                params.set("lng",lng);
-                params.set("z",zoom);            
+                this.setMapExtent();
                 window.history.pushState({},'',url);
             });
 
@@ -1375,9 +1370,10 @@ const LeafletMap = {
 
             // setup url params
             this.clearURLParams();
-            this.urlSearchParams.set("lat", this.map.getCenter().lat.toFixed(6));
-            this.urlSearchParams.set("lng", this.map.getCenter().lng.toFixed(6));
-            this.urlSearchParams.set("z", this.map.getZoom());
+            this.setMapExtent();
+            // this.urlSearchParams.set("lat", this.map.getCenter().lat.toFixed(6));
+            // this.urlSearchParams.set("lng", this.map.getCenter().lng.toFixed(6));
+            // this.urlSearchParams.set("z", this.map.getZoom());
             this.urlSearchParams.set("qtype","click");
             this.urlSearchParams.set("id_fs",fs.id_fs);
             window.history.pushState({},'',url);
@@ -1444,7 +1440,6 @@ const LeafletMap = {
             this.clickedMarkerLayer.clearLayers();
             this.maskLayer.clearLayers();
             this.adressLayer.clearLayers();
-
             // purge url params
             this.clearURLParams();
         },
@@ -1477,7 +1472,13 @@ const LeafletMap = {
                     break;
             };
 
-        },        
+        },
+        // inscrire les paramètres d'emprise de la carte dans l'URL
+        setMapExtent() {
+            this.urlSearchParams.set("lat", this.map.getCenter().lat.toFixed(6));
+            this.urlSearchParams.set("lng", this.map.getCenter().lng.toFixed(6));
+            this.urlSearchParams.set("z", this.map.getZoom());
+        },
         // styles
         getMarkerColor(type) {
             switch (type) {
