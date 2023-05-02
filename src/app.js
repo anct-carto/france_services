@@ -1136,29 +1136,26 @@ const LeafletMap = {
     watch: {
         addressCoords() { 
         // marker() {
-            let list_points = [];
+            let dataGeom = [];
             // reset everything : clear layers, previous clicked markers
             this.clearMap();
             
             // drop marker of searched address on map
             if(this.addressCoords) {
-                let address_marker = L.marker(this.addressCoords)
+                L.marker(this.addressCoords)
                                 .bindTooltip(this.addressLabel, {
                                     permanent:true, 
                                     direction:"top", 
                                     className:'leaflet-tooltip-result'
-                                }).openTooltip();
-                this.adressLayer.addLayer(address_marker);
+                                }).openTooltip()
+                                .addTo(this.adressLayer);
             };
 
             // convert data lat lng to featureCollection
-            this.data.forEach(feature => {
-                list_points.push(turf.point([feature.latitude, feature.longitude], { id: feature.id_fs }))
-            });
-            list_points = turf.featureCollection(list_points);
-
+            this.data.forEach(feature => dataGeom.push(turf.point([feature.latitude, feature.longitude], { id: feature.id_fs })) );
+            dataGeom = turf.featureCollection(dataGeom);
             // compute distance for each point
-            list_points.features.forEach(feature => {
+            dataGeom.features.forEach(feature => {
                 // !!!!! REVERSE [lat,lon] TO [lon,lat] FORMAT to compute correct distance !!!!!!!!!!!!
                 lon_dest = feature.geometry.coordinates[1];
                 lat_dest = feature.geometry.coordinates[0];
@@ -1174,7 +1171,7 @@ const LeafletMap = {
             });
 
             // sort by distance
-            list_points.features.sort((a,b) => {
+            dataGeom.features.sort((a,b) => {
                 if(a.properties.distance > b.properties.distance) {
                     return 1;
                 } else if (a.properties.distance < b.properties.distance) {
@@ -1184,18 +1181,15 @@ const LeafletMap = {
                 }
             });
 
-            let closest_points = list_points.features;
-
             // send ids of found fs to data prop
-            let closest_fs = [];
-            closest_points_id = closest_points.map(e => { return e.properties.id })
-
-            closest_fs = this.data.filter(e => {
-                return closest_points_id.includes(e.id_fs)
+            let dataGeomIds = dataGeom.features.map(e => { return e.properties.id });
+            let closestPts = []; // closest points
+            closestPts = this.data.filter(e => {
+                return dataGeomIds.includes(e.id_fs)
             });
 
-            closest_fs.forEach(e => {
-                closest_points.forEach(d => {
+            closestPts.forEach(e => {
+                dataGeom.features.forEach(d => {
                     if(d.properties.id === e.id_fs) {
                         e.distance = Math.round(d.properties.distance*10)/10
                     }
@@ -1205,7 +1199,7 @@ const LeafletMap = {
             // if radius in url then take url radius
             this.urlSearchParams.has('radius') ? searchRadius = this.urlSearchParams.get('radius') : searchRadius = this.searchRadius
 
-            this.resultList = closest_fs.filter(e => {
+            this.resultList = closestPts.filter(e => {
                 return e.distance <= searchRadius
             }).sort((a,b) => {
                 if(a.distance > b.distance) {
@@ -1218,11 +1212,11 @@ const LeafletMap = {
             });
 
             // create buffer 
-            radius = this.searchRadius*1000;
-            perimetre_recherche = this.buffer.setRadius(radius);
-            this.maskLayer.addLayer(perimetre_recherche);
+            let radius = this.searchRadius*1000;
+            let searchPerimeterLayer = this.buffer.setRadius(radius);
+            this.maskLayer.addLayer(searchPerimeterLayer);
             // pan map view to circle with offset from sidebar
-            this.flyToBoundsWithOffset(perimetre_recherche);
+            this.flyToBoundsWithOffset(searchPerimeterLayer);
 
             // setup url params
             this.urlSearchParams.set('qtype','address');
@@ -1247,11 +1241,10 @@ const LeafletMap = {
             this.resultList.forEach(e => delete e.distance);
 
             let filteredFeature = this.geomDep.features.find(e => e.properties.insee_dep === this.depResult );
-            let depMask = L.mask(filteredFeature, {
+            L.mask(filteredFeature, {
                 fillColor:'rgba(0,0,0,.25)',
                 color:'red'
-            });
-            this.maskLayer.addLayer(depMask);
+            }).addTo(this.maskLayer);
 
             // pan to dep borders
             this.flyToBoundsWithOffset(new L.GeoJSON(filteredFeature));
