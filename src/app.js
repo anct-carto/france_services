@@ -1054,14 +1054,12 @@ const LeafletMap = {
                 }
             },
             hoveredMarker:'',
+            searchType:'',
             addressCoords: null,
             addressLabel: null,
-            // marker: null,
-            // marker_tooltip: null,
             depResult:null,
-            resultList:'',
             searchRadius:10,
-            searchType:'',
+            resultList:'',
             urlSearchParams:params,
         }
     },
@@ -1108,8 +1106,8 @@ const LeafletMap = {
             return sidebar
         },
         buffer() {
-            if(this.marker) {
-                return L.circle(this.marker, {
+            if(this.addressCoords) {
+                return L.circle(this.addressCoords, {
                     color:'red',
                     fillColor:'rgba(0,0,0,1)',
                     interactive:false
@@ -1166,7 +1164,7 @@ const LeafletMap = {
                 lat_dest = feature.geometry.coordinates[0];
 
                 Object.defineProperty(feature.properties, 'distance', {
-                    value: turf.distance([this.marker[1],this.marker[0]], [lon_dest, lat_dest], { 
+                    value: turf.distance([this.addressCoords[1],this.addressCoords[0]], [lon_dest, lat_dest], { 
                         units: 'kilometers' 
                     }),
                     writable: true,
@@ -1226,7 +1224,6 @@ const LeafletMap = {
             // pan map view to circle with offset from sidebar
             this.flyToBoundsWithOffset(perimetre_recherche);
 
-            this.searchType = "address"
             // setup url params
             this.urlSearchParams.set('qtype','address');
             this.urlSearchParams.set('qlatlng',this.addressCoords);
@@ -1237,7 +1234,6 @@ const LeafletMap = {
         depResult() {
             // clear address layers (buffer + pin address)
             this.clearMap();
-            this.searchType = "dep";
 
             // filter data with matching departement code and send it to cards
             this.resultList = this.data.filter(e => {
@@ -1264,8 +1260,7 @@ const LeafletMap = {
             this.clearURLParams();
             this.urlSearchParams.set('qtype','admin');
             this.urlSearchParams.set('qcode',this.depResult);
-            let qlabel = filteredFeature.properties.lib_dep;
-            this.urlSearchParams.set('qlabel',qlabel);
+            this.urlSearchParams.set('qlabel',filteredFeature.properties.lib_dep);
             // window.history.pushState({},'',this.url);            
         },
     },
@@ -1418,6 +1413,7 @@ const LeafletMap = {
             return hoveredFeature
         },
         getSearchResult(e) {
+            this.searchType = e.resultType;
             // get result infos emitted from search group
             if(e.resultType == "address") {
                 this.addressCoords = e.resultCoords;
