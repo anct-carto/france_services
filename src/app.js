@@ -898,11 +898,11 @@ const LeafletSidebar = {
                     </p>
                     <p>
                         <b>Réalisation :</b>
-                        ANCT, Pôle analyse & diagnostics territoriaux - <a href = 'https://cartotheque.anct.gouv.fr/cartes' target="_blank">Service cartographie</a>
+                        ANCT, <a href = 'https://cartotheque.anct.gouv.fr/cartes' target="_blank">Service cartographie</a>
                     </p>
                     <p><b>Technologies utilisées :</b> Leaflet, Bootstrap, VueJS, Turf, Étalab - API Geo </p>
                     <p><b>Géocodage : </b>Étalab - Base adresse nationale</p>
-                    <p>Les données affichées sur cette carte sont disponibles et téléchargeables sur <a href="https://www.data.gouv.fr/fr/datasets/liste-des-structures-france-services/" target="_blank">data.gouv.fr</a>.</p>
+                    <p>Les données affichées sur cette carte peuvent être téléchargées sur <a href="https://www.data.gouv.fr/fr/datasets/liste-des-structures-france-services/" target="_blank">data.gouv.fr</a>.</p>
                     <p>Le code source de cet outil est disponible sur <a href="https://github.com/anct-carto/france_services" target="_blank">Github</a>.</p>
                 </div>
             </div>
