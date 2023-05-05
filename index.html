@@ -39,23 +39,8 @@
     <script src='lib/turf.min.js'></script>
   </head>
   <body>
-    <div class="w-100 h-100 d-flex flex-column justify-content-center align-items-center" id = "loading">
-      <div class="row">
-        <div class="spinner-border" role="status">
-          <p class="sr-only">Loading...</p>
-        </div>
-      </div>
-      <div class="row">
-        <p>Chargement des données en cours ...</p>
-      </div>
-    </div>
-    <!-- <div class="w-100 h-100 d-flex flex-column justify-content-center align-items-center" id = "error" style="display:none">
-      <div class="row">
-        <p>Une erreur technique est survenue. Veuillez réessayer dans quelques minutes</p>
-      </div>
-    </div> -->
     <div id="app">
-      <router-view></router-view>
+      <app></app>
     </div>
     <!-- chargement script js -->
     <script src= "src/app.js"></script>

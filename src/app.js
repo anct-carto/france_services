@@ -5,84 +5,123 @@
 
 */
 
+const url = new URL(window.location.href);
+const urlSearchParams = url.searchParams;
+const qtype = urlSearchParams.get("qtype");
+
 // Chargement données globales ****************************************************************************
 
 const dataUrl = "https://www.data.gouv.fr/fr/datasets/r/afc3f97f-0ef5-429b-bf16-7b7876d27cd4"
-let fs_tab_fetched = [];
-let page_status;
 
-// geocode
-const api_adresse = "https://api-adresse.data.gouv.fr/search/?q=";
-const api_admin = "https://geo.api.gouv.fr/departements?";
+// charge depuis session storage ou fetch
+async function getData(path) {
+    const sessionData = JSON.parse(sessionStorage.getItem("session_data1"));
+    if(sessionData) {
+        console.log("Chargement depuis local storage");
+        return sessionData
+    } else {
+        try {
+            console.log("Chargement depuis data.gouv");
+            let data = await fetchCsv(path);
+            data = data.filter(e => e.latitude != 0 & e.latitude != "" & e.longitude != 0 & e.longitude != "" & e.id_fs != "")
+            // transformations avant utilisation
+            data.forEach(e => {
+                e.itinerance = e["itinerance"].toLowerCase();               
+                if(e.itinerance == "non" || e.itinerance == "") {
+                    if(e.format_fs == "Site principal") {
+                        e.type = "Siège";
+                    } else if(e.format_fs == "Antenne") {
+                        e.type = "Antenne";
+                    }
+                } else {
+                    e.type=  "Bus";
+                };
+            });
+            sessionStorage.setItem('session_data1',JSON.stringify(data));
+            return data
+        } catch (error) {
+            console.error(error)
+        }
+    }
+}
 
-const loading = document.getElementById("loading");
-
-const url = new URL(window.location.href);
-const params = url.searchParams;
-const qtype = params.get("qtype");
-
-
-function init() {
-    Papa.parse(dataUrl, {
-        download: true,
-        header: true,
-        skipEmptyLines:true,
-        complete: (results) => fetchSpreadsheetData(results.data)
-    });
-};
-
-// transformation données brutes pour être compatibles avec la carte
-function fetchSpreadsheetData(res) {
-    res.forEach(e => { fs_tab_fetched.push(e)});
-    // transformations avant utilisation
-    fs_tab_fetched.forEach(e => {
-        e.itinerance = e["itinerance"].toLowerCase();
-        
-        if(e.itinerance == "non" || e.itinerance == "") {
-            if(e.format_fs == "Site principal") {
-                e.type = "Siège";
-            } else if(e.format_fs == "Antenne") {
-                e.type = "Antenne";
-            }
-        } else {
-            e.type=  "Bus";
-        };
-    });
-    /* filter on lines with latlng */
-    fs_tab_fetched = fs_tab_fetched.filter(e => {
-        return e.latitude != 0 & e.latitude != "" & e.longitude != 0 & e.longitude != ""
-    });
-    // stockage données en local pour ne pas faire appel aux données à chaque rechargement
-    sessionStorage.setItem("session_local", JSON.stringify(fs_tab_fetched));
-    loading.remove();
-    page_status = "loaded";
-};
+// parse csv (ou tableau issu d'un tableau partagé) en json
+function fetchCsv(dataURL) {
+    return new Promise((resolve,reject) => {
+        Papa.parse(dataURL, {
+            download: true,
+            header: true,
+            complete: (res) => resolve(res.data),
+            error:(err) => reject(err)
+        });
+    })
+}
 
 
 // ****************************************************************************
+// écran chargement 
 
-// Loading screen
-const loadingScreen = {
-    template:`
-        <div>
-            <div class="w-100 h-100 d-flex flex-column justify-content-center align-items-center" id = "loading">
-                <div class="row">
-                    <div class="spinner-border" role="status">
-                        <p class="sr-only">Loading...</p>
-                    </div>
-                </div>
-                <div class="row">
-                    <p>Chargement des données en cours ...</p>
-                </div>
+class LoadingScreen {
+    constructor() {
+        this.state = {
+            isLoading:false
+        }
+    }
+    show() { this.state.isLoading = true }
+    hide() { this.state.isLoading = false }
+}
+
+let loadingScreen = new LoadingScreen();
+
+
+// écran de chargement
+const Loading = {
+    template: `
+    <div id = "loading" class="w-100 h-100 d-flex flex-column justify-content-center align-items-center">
+        <div class="row">
+            <div class="spinner-border" role="status">
+                <p class="sr-only">Loading...</p>
             </div>
         </div>
+        <div class="row">
+            <p>Chargement en cours ...</p>
+        </div>
+    </div>
     `
-};
+}
 
 
 // ****************************************************************************
+// écran chargement 
 
+class ErrorScreen {
+    constructor(code) {
+        this.state = {
+            error:false,
+        }
+    }
+    show(code) {
+        this.state.error = true
+        this.state.code=code
+    }
+    hide() {
+        this.state.error = false
+    }
+}
 
+let errorScreen = new ErrorScreen();
+
+const ErrorTemplate = {
+    template: `
+    <div id = "error-screen" class="w-100 h-100 d-flex flex-column justify-content-center align-items-center">
+        <div class="row">
+            <p>Une erreur est survenue. Veuillez réessayer ultérieurement.</p>
+        </div>
+    </div>
+    `
+}
+
+// ****************************************************************************
 
 const SearchBar = {
     template: `
@@ -94,7 +133,7 @@ const SearchBar = {
                             <input type="radio" name="address" id="adresse-btn" @click="onChange($event)" checked>Adresse
                         </label>
                         <label class="search-type-btn btn btn-outline-primary" aria-label="Rechercher un département" title="Rechercher un département">
-                            <input type="radio" name="admin" id="dep-btn" @click="onChange($event)">Département
+                            <input type="radio" name="dep" id="dep-btn" @click="onChange($event)">Département
                         </label>
                     </div>
                 </div>
@@ -113,7 +152,7 @@ const SearchBar = {
                 </div>
                 <div class="list-group" v-if="isOpen">
                     <div class="list-group-item" v-for="(suggestion, i) in suggestionsList"
-                        @click="onClickSuggest(suggestion)"
+                        @click="onEnter"
                         @keydown.esc="isOpen=false"
                         @mouseover="onMouseover(i)"
                         @mouseout="onMouseLeave"
@@ -147,6 +186,8 @@ const SearchBar = {
             isOpen:false,
             index:0,
             suggestionsList:[],
+            apiAdresse:"https://api-adresse.data.gouv.fr/search/?q=",
+            apiAdmin:"https://geo.api.gouv.fr/departements?",
         }
     },
     computed: {
@@ -213,7 +254,7 @@ const SearchBar = {
             if(val === '') { this.isOpen = false; };
             if (val != undefined && val != '') {
                 if(this.searchType == 'address') {
-                    fetch(`${api_adresse}${val}&autocomplete=1`)
+                    fetch(`${this.apiAdresse}${val}&autocomplete=1`)
                         .then(res => res.json())
                         .then(res => {
                             let suggestions = [];
@@ -226,15 +267,11 @@ const SearchBar = {
                             };
                             this.suggestionsList = suggestions;
                         }).catch(error => console.error(error));
-                } else if(this.searchType == 'admin') {
+                } else if(this.searchType == 'dep') {
                     let field;
                     let number = val.match(/\d+/);
-                    if(number) {
-                        field = "code="
-                    } else {
-                        field = "nom="
-                    };
-                    fetch(`${api_admin}${field}${val}&autocomplete=1&limit=5`)
+                    number ? field = "code=" : field = "nom=";
+                    fetch(`${this.apiAdmin}${field}${val}&autocomplete=1&limit=5`)
                     .then(res => res.json())
                     .then(res => {
                         let suggestions = [];
@@ -272,48 +309,20 @@ const SearchBar = {
                     this.inputAdress = suggestion.properties.label;
                     // send data
                     this.$emit("searchResult", {
-                        resultType:'address',
+                        resultType:this.searchType,
                         resultCoords: [suggestion.geometry.coordinates[1],suggestion.geometry.coordinates[0]], 
                         resultLabel: suggestion.properties.label
                     })
                 } else {
                     this.inputAdress = suggestion.nom;
                     this.$emit('searchResult', {
-                        resultType:'dep',
-                        resultCode:suggestion.code
+                        resultType:this.searchType,
+                        resultCode:suggestion.code,
                     });
                 }
                 this.suggestionsList = [];
                 this.index = -1;
             }
-        },
-        onClickSuggest(suggestion) {            
-            if(this.searchType == 'address') {
-                // reset search
-                this.inputAdress = suggestion.properties.label;
-                // get address coordinates to pass to map
-                let coordinates = suggestion.geometry.coordinates;
-                let latlng_adress = [coordinates[1], coordinates[0]];
-    
-                // send data
-                this.$emit("searchResult", {
-                    resultType:'address',
-                    resultCoords: latlng_adress, 
-                    resultLabel: this.inputAdress
-                });
-            } else {
-                this.inputAdress = suggestion.nom;
-                // send data
-                this.$emit("searchResult", {
-                    resultType:'dep',
-                    resultCode:suggestion.code,
-                    resultNom:suggestion.nom
-                });                
-            }
-            
-            this.suggestionsList = [];
-            this.isOpen = !this.isOpen;
-
         },
         handleClickOutside(evt) {
             if (!this.$el.contains(evt.target)) {
@@ -337,6 +346,92 @@ const SearchBar = {
 window.jsPDF = window.jspdf.jsPDF
 
 const FichePDF = {
+    template:`
+    <div class="container-sm" id="fiche-pdf">
+    <div class="row">
+            <div class="header-pdf-logos">
+                <img src="img/logo_rf.jpg" class="logo-rf">
+                <img src="img/logo_FranceServices_sans-marianne-01.jpg" class="logo-fs">
+            </div>
+            <div class="col-11 p-0">
+                <span style="font-size:.8em">Fiche d'information France services - données extraites le {{ date }}</span>
+                <h2 style='font-weight:bolder'><b>{{ fs.lib_fs }}</b></h2><br>
+                <div class = "intro">
+                    <p v-if="fs.itinerance=='oui'">
+                        <span>Attention : cette France services est en itinérance</span>
+                    </p>
+                    <p>
+                        Immatriculation de véhicules, RSA, impôt, permis de conduire, accès aux services en ligne... Vous avez besoin d’aide pour vos démarches administratives ? Quel que soit l’endroit où vous vivez, en ville ou à la campagne, France services est un guichet unique qui donne accès dans un seul et même lieu aux principaux organismes de services publics : le ministère de l'Intérieur, le ministère de la Justice, les Finances publiques, Pôle emploi, l'Assurance retraite, l'Assurance maladie, la CAF, la MSA et la Poste.</p>
+                    <p>
+                        Retrouvez la France services la plus proche de chez vous sur <a href="france-services.gouv.fr" target="_blank">france-services.gouv.fr</a> 
+                    </p>
+                    <div class="row">
+                        <div class="col-6">
+                            <h5>
+                                <!--<i class = "las la-map-marker"></i>-->
+                                <b>Adresse</b>
+                            </h5>
+                            <div>
+                                <span>
+                                    {{ fs.adresse }} <br>
+                                </span>
+                                <span v-if = "fs.complement_adresse.length">
+                                    {{ fs.complement_adresse }}<br>
+                                </span>
+                                <span>
+                                    {{ fs.code_postal }} {{ fs.lib_com }}
+                                </span>
+                            </div><br>
+                            <div>
+                                <p>
+                                    <h5>
+                                        <!--<i class = "las la-clock"></i>-->
+                                        <b>Horaires d'ouverture</b>
+                                    </h5>
+                                    <ul style="list-style: none;display: inline-block;padding-left: 5px;">
+                                        <li>
+                                            <b>Lundi : </b>{{ fs.h_lundi }} 
+                                        </li>
+                                        <li>
+                                            <b>Mardi : </b>{{ fs.h_mardi }} 
+                                        </li>
+                                        <li>
+                                            <b>Mercredi : </b>{{ fs.h_mercredi }} 
+                                        </li>
+                                        <li>
+                                            <b>Jeudi : </b>{{ fs.h_jeudi }} 
+                                        </li>
+                                        <li>
+                                            <b>Vendredi : </b>{{ fs.h_vendredi }} 
+                                        </li>
+                                        <li>
+                                            <b>Samedi : </b>{{ fs.h_samedi }} 
+                                        </li>
+                                    </ul>
+                                </p>
+                                <h5>
+                                    <!--<i class = "las la-phone"></i>-->
+                                    <b>Contact</b>
+                                </h5>
+                                <span v-if = "fs.telephone"><b>Téléphone : </b>{{ fs.telephone }}</span><br>
+                                <span v-if = "fs.mail"><b>Courriel : </b><a v-bind:href = "'mailto:' + fs.mail" target = "_blank">{{ fs.mail }}</a></span>
+                            </div><br>
+                        </div>
+                        <div class="col-6">
+                            <div id="map-pdf"></div>
+                        </div>
+                    </div>
+                </div><br>
+                <div class="corps">
+                    <div v-if="fs.commentaire">
+                        <!--<i class = "las la-info-circle"></i>-->
+                        <h5><b>Commentaire(s)</b></h5>
+                        <span>{{ fs.commentaire }}</span>
+                    </div>
+                </div>
+             </div>
+        </div>
+    </div>`,
     computed: {
         fs() {
             return this.$route.params.fs
@@ -360,8 +455,8 @@ const FichePDF = {
         let fs = this.fs;
         let coords = [fs.latitude,fs.longitude];
         let map = new L.map('map-pdf', {
-            center: [params.get("lat") || 46.413220, params.get("lng") || 1.219482],
-            zoom:params.get("z") || defaultZoomLevel,
+            center: [urlSearchParams.get("lat") || 46.413220, urlSearchParams.get("lng") || 1.219482],
+            zoom:urlSearchParams.get("z") || defaultZoomLevel,
             preferCanvas: true,
             zoomControl:false
         }).setView(coords,16);
@@ -403,105 +498,12 @@ const FichePDF = {
             });
         }, 500);
     },
-    template:`
-        <div class="container-sm" id="fiche-pdf">
-        <div class="row">
-                <div class="header-pdf-logos">
-                    <img src="img/logo_rf.jpg" class="logo-rf">
-                    <img src="img/logo_FranceServices_sans-marianne-01.jpg" class="logo-fs">
-                </div>
-                <div class="col-11 p-0">
-                    <span style="font-size:.8em">Fiche d'information France services - données extraites le {{ date }}</span>
-                    <h2 style='font-weight:bolder'><b>{{ fs.lib_fs }}</b></h2><br>
-                    <div class = "intro">
-                        <p v-if="fs.itinerance=='oui'">
-                            <span>Attention : cette France services est en itinérance</span>
-                        </p>
-                        <p>
-                            Immatriculation de véhicules, RSA, impôt, permis de conduire, accès aux services en ligne... Vous avez besoin d’aide pour vos démarches administratives ? Quel que soit l’endroit où vous vivez, en ville ou à la campagne, France services est un guichet unique qui donne accès dans un seul et même lieu aux principaux organismes de services publics : le ministère de l'Intérieur, le ministère de la Justice, les Finances publiques, Pôle emploi, l'Assurance retraite, l'Assurance maladie, la CAF, la MSA et la Poste.</p>
-                        <p>
-                            Retrouvez la France services la plus proche de chez vous sur <a href="france-services.gouv.fr" target="_blank">france-services.gouv.fr</a> 
-                        </p>
-                        <div class="row">
-                            <div class="col-6">
-                                <h5>
-                                    <!--<i class = "las la-map-marker"></i>-->
-                                    <b>Adresse</b>
-                                </h5>
-                                <div>
-                                    <span>
-                                        {{ fs.adresse }} <br>
-                                    </span>
-                                    <span v-if = "fs.complement_adresse.length">
-                                        {{ fs.complement_adresse }}<br>
-                                    </span>
-                                    <span>
-                                        {{ fs.code_postal }} {{ fs.lib_com }}
-                                    </span>
-                                </div><br>
-                                <div>
-                                    <p>
-                                        <h5>
-                                            <!--<i class = "las la-clock"></i>-->
-                                            <b>Horaires d'ouverture</b>
-                                        </h5>
-                                        <ul style="list-style: none;display: inline-block;padding-left: 5px;">
-                                            <li>
-                                                <b>Lundi : </b>{{ fs.h_lundi }} 
-                                            </li>
-                                            <li>
-                                                <b>Mardi : </b>{{ fs.h_mardi }} 
-                                            </li>
-                                            <li>
-                                                <b>Mercredi : </b>{{ fs.h_mercredi }} 
-                                            </li>
-                                            <li>
-                                                <b>Jeudi : </b>{{ fs.h_jeudi }} 
-                                            </li>
-                                            <li>
-                                                <b>Vendredi : </b>{{ fs.h_vendredi }} 
-                                            </li>
-                                            <li>
-                                                <b>Samedi : </b>{{ fs.h_samedi }} 
-                                            </li>
-                                        </ul>
-                                    </p>
-                                    <h5>
-                                        <!--<i class = "las la-phone"></i>-->
-                                        <b>Contact</b>
-                                    </h5>
-                                    <span v-if = "fs.telephone"><b>Téléphone : </b>{{ fs.telephone }}</span><br>
-                                    <span v-if = "fs.mail"><b>Courriel : </b><a v-bind:href = "'mailto:' + fs.mail" target = "_blank">{{ fs.mail }}</a></span>
-                                </div><br>
-                            </div>
-                            <div class="col-6">
-                                <div id="map-pdf"></div>
-                            </div>
-                        </div>
-                    </div><br>
-                    <div class="corps">
-                        <div v-if="fs.commentaire">
-                            <!--<i class = "las la-info-circle"></i>-->
-                            <h5><b>Commentaire(s)</b></h5>
-                            <span>{{ fs.commentaire }}</span>
-                        </div>
-                    </div>
-                 </div>
-            </div>
-        </div>
-    `
 };
 
 
 // Card et boutons de contrôles card ****************************************************************************
 
 const CardControlBtn = {
-    props:["icon","text"],
-    data() {
-        return {
-            show:false
-        }
-    },
     template: `
         <button type="button" class="card-action-btn action btn btn-outline-primary btn" 
                 @click="event.stopPropagation()" 
@@ -511,12 +513,114 @@ const CardControlBtn = {
             <i :class="'las la-'+icon"></i>
             <span v-if="show" @mouseover="show=true" @mouseout="show=false">{{ text }}</span>
         </button>
-
-    `
+    `,
+    props:["icon","text"],
+    data() {
+        return {
+            show:false
+        }
+    },
 };
 
 
 const CardTemplate = {
+    template: `
+    <div class="card result-card"
+            aria-label="Cliquer pour afficher plus d'informations"
+            title="Cliquer pour afficher plus d'informations"
+            :id="fs.id_fs"
+            @click="showInfo = !showInfo" 
+            :class="getHoveredCard()">
+        <div class="card-header" :class="getClass()">
+            <div class="card-text">
+                <i :class="getFontIcon()"></i> 
+                <span class="card-header-left">{{ fs.lib_fs }}</span>
+                <span class="distance" v-if="fs.distance">
+                    <i class = "las la-map-marker"></i>
+                    {{ fs.distance }} km
+                </span>                      
+            </div>
+        </div>
+        <div class="card-body"">
+            <div class = "intro">
+                <p v-if="fs.itinerance=='oui'">
+                    <i class="las la-exclamation-circle"></i> 
+                    <ul>
+                        <li>Cette France services est en itinérance</li>
+                    </ul>
+                </p>
+                <p>
+                    <i class = "las la-map-marker"></i>
+                    <ul>
+                        <li>
+                            {{ fs.adresse }} 
+                        </li>
+                        <li v-if = "fs.complement_adresse.length">
+                            {{ fs.complement_adresse }} 
+                        </li>
+                        <li>
+                            {{ fs.code_postal }} {{ fs.lib_com }}
+                        </li>
+                    </ul>
+                </p>
+            </div>
+            <div class="corps" v-show="showInfo">
+                <p v-if = "fs.telephone">
+                <i class = "las la-phone"></i>
+                <ul>
+                    <li @click="event.stopPropagation()">{{ fs.telephone }}</li>
+                </ul>
+                </p>
+                <p v-if = "fs.mail">
+                <i class = "las la-at card-icon" ></i>
+                <ul>
+                    <li><a v-bind:href = "'mailto:' + fs.mail" target = "_blank">{{ fs.mail }}</a></li>
+                </ul>
+                </p>
+                <p>
+                    <i class = "las la-clock"></i>
+                    <ul>
+                        <li>
+                            <b>Lundi : </b>{{ fs.h_lundi }} 
+                        </li>
+                        <li>
+                            <b>Mardi : </b>{{ fs.h_mardi }} 
+                        </li>
+                        <li>
+                            <b>Mercredi : </b>{{ fs.h_mercredi }} 
+                        </li>
+                        <li>
+                            <b>Jeudi : </b>{{ fs.h_jeudi }} 
+                        </li>
+                        <li>
+                            <b>Vendredi : </b>{{ fs.h_vendredi }} 
+                        </li>
+                        <li>
+                            <b>Samedi : </b>{{ fs.h_samedi }} 
+                        </li>
+                    </ul>
+                </p>
+                <p v-if="fs.commentaire" @click="event.stopPropagation()" class="card-body-commentaire">
+                    <i class = "las la-info-circle"></i>                    
+                    <ul>
+                        <li>{{ fs.commentaire }}</li>
+                    </ul>
+                </p>
+                <p v-if="fs.groupe">
+                    <i class="las la-share-alt"></i>
+                    Cette structure fait partie du réseau "{{ fs.groupe }}"
+                </p>
+                <div class="card-controls">
+                    <control-btn :icon="'search-plus'" :text="'Zoom'" @click.native="zoomOnMap"></control-btn>
+                    <control-btn :icon="'arrows-alt'" :text="'Centrer'" @click.native="flyOnMap"></control-btn>
+                    <control-btn :icon="'route'" :text="'Itinéraire'" @click.native="getMapsRoute"></control-btn>
+                    <control-btn :icon="'file-pdf'" :text="'Télécharger'" @click.native="getPdf"></control-btn>
+                    <control-btn :icon="'clipboard'" :text="'Partager'" @click.native="copyLink" @mouseout.native="tooltipOff"></control-btn>
+                    <span class="copied-tooltip" v-if="showTooltip">Lien copié!</span>
+                </div>
+            </div>
+        </div>
+    </div>`,
     props: ['fs', 'cardToHover', 'collapse'],
     data () {
       return {
@@ -531,7 +635,7 @@ const CardTemplate = {
     },
     mounted() {
         // control collapsing : if only one card is on side panel than collapse = true else false
-        if(this.collapse == true || params.get('qtype') == "click") {
+        if(this.collapse == true || urlSearchParams.get('qtype') == "click") {
             this.showInfo = true
         } else {
             this.showInfo = this.showInfo;
@@ -558,12 +662,6 @@ const CardTemplate = {
                 return "card"
             }
         },
-        hoverOnMap() {
-            this.$emit('hoverOnMap', this.fs.id_fs);
-        },
-        stopHoverMap() {
-            this.$emit('hoverOnMap', '');
-        },
         zoomOnMap() {
             event.stopPropagation();
             map = this.$parent.map;
@@ -578,118 +676,24 @@ const CardTemplate = {
                 duration:1,
             });
         },
+        getMapsRoute() {
+            let gmapsUrl = `https://www.google.com/maps/dir//${this.fs.latitude},${this.fs.longitude}/@${this.fs.latitude},${this.fs.longitude},17z/`;
+            window.open(gmapsUrl,"_blank").focus();
+        },
         getPdf() {
-            id_fs = this.fs.id_fs;
-            this.$router.push({name: 'fiche', params: { id_fs: id_fs, fs:this.fs }});
+            this.$router.push({name: 'fiche', params: { id_fs: this.fs.id_fs, fs:this.fs }});
         },
         copyLink() {
-            event.stopPropagation()
-            let linkToShare = `${url.origin}/france_services/?qtype=click&id_fs=${this.fs.id_fs}`;
-            navigator.clipboard.writeText(linkToShare);
+            event.stopPropagation();
+            shareLink(`?qtype=click&id_fs=${this.fs.id_fs}`)
             this.showTooltip = true;
         },
         tooltipOff() {
             this.showTooltip = false;
         },
     },
-    template: `<div class="card result-card"
-                    aria-label="Cliquer pour afficher plus d'informations"
-                    title="Cliquer pour afficher plus d'informations"
-                    :id="fs.id_fs"
-                    @click="showInfo = !showInfo" 
-                    :class="getHoveredCard()" 
-                    @mouseover="hoverOnMap"
-                    @mouseout="stopHoverMap">
-                <div class="card-header" :class="getClass()">
-                  <div class="card-text">
-                      <i :class="getFontIcon()"></i> 
-                      <span class="card-header-left">{{ fs.lib_fs }}</span>
-                      <span class="distance" v-if="fs.distance">
-                          <i class = "las la-map-marker"></i>
-                          {{ fs.distance }} km
-                      </span>                      
-                  </div>
-                </div>
-                <div class="card-body"">
-                  <div class = "intro">
-                    <p v-if="fs.itinerance=='oui'">
-                        <i class="las la-exclamation-circle"></i> 
-                        <ul>
-                            <li>Cette France services est en itinérance</li>
-                        </ul>
-                    </p>
-                    <p>
-                        <i class = "las la-map-marker"></i>
-                        <ul>
-                            <li>
-                                {{ fs.adresse }} 
-                            </li>
-                            <li v-if = "fs.complement_adresse.length">
-                                {{ fs.complement_adresse }} 
-                            </li>
-                            <li>
-                                {{ fs.code_postal }} {{ fs.lib_com }}
-                            </li>
-                        </ul>
-                    </p>
-                  </div>
-                  <div class="corps" v-show="showInfo">
-                    <p v-if = "fs.telephone">
-                      <i class = "las la-phone"></i>
-                      <ul>
-                        <li @click="event.stopPropagation()">{{ fs.telephone }}</li>
-                      </ul>
-                    </p>
-                    <p v-if = "fs.mail">
-                      <i class = "las la-at card-icon" ></i>
-                      <ul>
-                          <li><a v-bind:href = "'mailto:' + fs.mail" target = "_blank">{{ fs.mail }}</a></li>
-                      </ul>
-                    </p>
-                    <p>
-                        <i class = "las la-clock"></i>
-                        <ul>
-                            <li>
-                                <b>Lundi : </b>{{ fs.h_lundi }} 
-                            </li>
-                            <li>
-                                <b>Mardi : </b>{{ fs.h_mardi }} 
-                            </li>
-                            <li>
-                                <b>Mercredi : </b>{{ fs.h_mercredi }} 
-                            </li>
-                            <li>
-                                <b>Jeudi : </b>{{ fs.h_jeudi }} 
-                            </li>
-                            <li>
-                                <b>Vendredi : </b>{{ fs.h_vendredi }} 
-                            </li>
-                            <li>
-                                <b>Samedi : </b>{{ fs.h_samedi }} 
-                            </li>
-                        </ul>
-                    </p>
-                    <p v-if="fs.commentaire" @click="event.stopPropagation()" class="card-body-commentaire">
-                        <i class = "las la-info-circle"></i>                    
-                        <ul>
-                            <li>{{ fs.commentaire }}</li>
-                        </ul>
-                    </p>
-                    <p v-if="fs.groupe">
-                        <i class="las la-share-alt"></i>
-                        Cette structure fait partie du réseau "{{ fs.groupe }}"
-                    </p>
-                    <div class="card-controls">
-                        <control-btn :icon="'search-plus'" :text="'Zoom'" @click.native="zoomOnMap"></control-btn>
-                        <control-btn :icon="'arrows-alt'" :text="'Déplacer sur'" @click.native="flyOnMap"></control-btn>
-                        <control-btn :icon="'file-pdf'" :text="'Télécharger'" @click.native="getPdf"></control-btn>
-                        <control-btn :icon="'clipboard'" :text="'Partager'" @click.native="copyLink" @mouseout.native="tooltipOff"></control-btn>
-                        <span class="copied-tooltip" v-if="showTooltip">Lien copié!</span>
-                    </div>
-                  </div>
-                </div>
-              </div>`
   };
+
 
 
 
@@ -697,6 +701,17 @@ const CardTemplate = {
 
 
 const Slider = {
+    template:`
+        <div id="range-slider-group">
+            <span for="customRange1" class="form-label" style="font-size:1.1em;">Rayon de recherche à vol d'oiseau : </span><br>
+            <span id="input-thumb" ref="bubble">{{ radiusVal }} km</span>
+            <input type="range" class="form-range" 
+                id="distance-slider" 
+                v-model="radiusVal" 
+                @change="emitRadius" 
+                min="minRadiusVal" max="50" step="0.2">
+        </div><br>
+    `,
     data() {
         return {
             radiusVal:'',
@@ -711,57 +726,215 @@ const Slider = {
             const min = this.minRadiusVal;
             const max = this.maxRadiusVal;
             const pctValue = Number((val-min)*100/(max-min));
-
             bubble.style.left = `calc(${pctValue}% + (${5 - pctValue * 0.6}px))`;
         }
     },
     mounted() {
-        if(params.has("qr")) {
-            this.radiusVal = params.get("qr");
-        } else {
-            this.radiusVal = 10;
-        };
+        urlSearchParams.has("qr") ? this.radiusVal = urlSearchParams.get("qr") : this.radiusVal = 10;
         this.emitRadius();
-        
     },
     methods: {
         emitRadius() {
-            if(params.has("qlatlng")) {
-                params.set("qr",this.radiusVal);
+            if(urlSearchParams.has("qlatlng")) {
+                urlSearchParams.set("qr",this.radiusVal);
                 window.history.pushState({},'',url);
             };
             this.$emit("radiusVal",this.radiusVal);      
         },
     },
-    template:`
-        <div id="range-slider-group">
-            <span for="customRange1" class="form-label" style="font-size:1.1em;">Rayon de recherche à vol d'oiseau : </span><br>
-            <span id="input-thumb" ref="bubble">{{ radiusVal }} km</span>
-            <input type="range" class="form-range" 
-                   id="distance-slider" 
-                   v-model="radiusVal" 
-                   @change="emitRadius" 
-                   min="minRadiusVal" max="50" step="0.2">
-        </div><br>
-    `
 };
+
+// ****************************************************************************
+
+const resultsCountComponent = {
+    props:['nbResults','type'],
+    computed: {
+        styleSheet() {
+            return {
+                background:this.color
+            }
+        },
+        color() {
+            switch (this.type) {
+                case "siege":
+                    return "rgb(41,49,115)";
+                case "bus":
+                    return "#00ac8c";
+                case "antenne":
+                    return "#5770be";
+            }
+        },
+        text() {
+            switch (this.type) {
+                case "siege":
+                    return 'fixe';
+                case "bus":
+                    return "itinérante";
+                case "antenne":
+                    return "antenne";
+            }
+        }
+    },
+    template: `
+        <span class="nb-result-per-type" :style="styleSheet">
+            <b>{{ nbResults }}</b> {{ text }}<span v-if="nbResults>1">s</span>
+        </span>
+    `
+}
 
 
 // ****************************************************************************
 
+
 const LeafletSidebar = {
+    template: ` 
+        <div id="sidebar" class="leaflet-sidebar collapsed">
+            <!-- nav tabs -->
+            <div class="leaflet-sidebar-tabs">
+                <!-- top aligned tabs -->
+                <ul role="tablist">
+                    <li>
+                        <a href="#home" role="tab" title="Accueil">
+                            <i class="las la-home"></i>
+                            <span class="tab-name">Accueil</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#search-tab" role="tab" title="Recherche">
+                            <i class="las la-search"></i>
+                            <span class="tab-name">Recherche</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#a-propos" role="tab" title="À propos">
+                            <i class="las la-info-circle"></i>
+                            <span class="tab-name">À propos</span>
+                        </a>
+                    </li>
+                </ul>
+                <!-- bottom aligned tabs -->
+                <!--<ul role="tablist">
+                    <li><a href="#a-propos" role="tab"><i class="la la-question-circle"></i></a></li>
+                    <li><a href="https://github.com/cget-carto/France-services" target="_blank"><i class="la la-github"></i></a></li>
+                </ul>-->
+            </div>
+            <!-- panel content -->
+            <div class="leaflet-sidebar-content">
+                <div class="leaflet-sidebar-pane" id="home">
+                    <div class="leaflet-sidebar-header">
+                        <span>Accueil</span>
+                        <span class="leaflet-sidebar-close">
+                            <i class="las la-step-backward"></i>
+                        </span>
+                    </div>
+                    <div class="panel-content">
+                        <div class="header-logo">
+                            <img src="img/logo_FranceServices-01.png" id="programme-logo">
+                        </div>
+                        <p>France services est un nouveau modèle d’accès aux services publics pour les Français. L’objectif est de permettre à chaque citoyen d’accéder aux services publics du quotidien dans un lieu unique : réaliser sa demande de carte grise, remplir sa déclaration de revenus pour les impôts sur internet ou encore effectuer sa demande d’APL. Des agents polyvalents et formés sont présents dans la France services la plus proche de chez vous pour vous accompagner dans ces démarches.</p>
+                        <p>France services est un programme piloté par le <a href="https://www.cohesion-territoires.gouv.fr/" target="_blank">ministère de la Transition écologique et de la Cohésion des territoires</a> via l'Agence nationale de la cohésion des territoires (ANCT).</p>
+                        <button type="button" class="card-btn btn btn-outline-primary btn-home-tab" @click="openSearchPanel">
+                            <i class="las la-search"></i>
+                            Trouver une France services
+                        </button>
+                        <button type="button" class="card-btn btn btn-outline-primary btn-home-tab" @click="window.open('https://agence-cohesion-territoires.gouv.fr/france-services-36')">
+                            <i class="las la-question-circle"></i>
+                            En savoir plus
+                        </button>
+                    </div>
+                </div>
+                <div class="leaflet-sidebar-pane" id="search-tab">
+                    <div class="leaflet-sidebar-header">
+                        <span>Recherche</span>
+                        <span class="leaflet-sidebar-close">
+                            <i class="las la-step-backward"></i>
+                        </span>
+                    </div>
+                    <div>
+                        <div id="search-inputs">
+                            <search-group @searchResult="getSearchResult" @searchType="getSearchType" @clearSearch="clearSearch" ref="searchGroup"></search-group>
+                            <hr/>
+                            <slider @radiusVal="radiusVal" v-if="urlSearchParams.get('qtype')=='address'"></slider>
+                        </div>
+                        <div id="search-results-header" v-if="sourceData.length>0">
+                            <span id="nb-results" v-if="urlSearchParams.get('qtype')!='click'">
+                                <b>{{ sourceData.length }}</b> résultat<span v-if="sourceData.length>1">s</span>
+                            </span>
+                            <button class="card-btn action btn btn-outline-primary btn"
+                                    v-if="urlSearchParams.get('qtype')!='click'"
+                                    style='float:right;margin-top:5px'
+                                    @click="shareResults"
+                                    @mouseleave="shareText='Partager'">
+                                <i class="las la-share"></i>
+                                {{ shareText }}
+                            </button>
+                        </div>
+                        <div id="results" v-if="sourceData.length >0">
+                            <div style="margin-bottom:15px" v-if="urlSearchParams.get('qtype')!='click'">
+                                <result-count :nbResults="nbResults.siege" 
+                                            :type="'siege'" 
+                                            v-if="nbResults.siege">
+                                </result-count>
+                                <result-count :nbResults="nbResults.bus" 
+                                            :type="'bus'" 
+                                            v-if="nbResults.bus">
+                                </result-count>
+                                <result-count :nbResults="nbResults.antenne"
+                                            :type="'antenne'" 
+                                            v-if="nbResults.antenne">
+                                </result-count>
+                            </div>
+                            <card v-if="show"
+                                v-for="(fs, index) in sourceData"
+                                :collapse="collapse"
+                                :fs="fs" :key="index"
+                                :cardToHover="cardToHover"
+                                @mouseover.native="$emit('hoverFeature',fs.id_fs)"
+                                @mouseout.native="$emit('clearHoveredFeature')">
+                            </card>
+                        </div>
+                        <p style="text-align:center"v-if="Array.isArray(sourceData) & sourceData.length==0">
+                            <br>Aucun résultat ... Veuillez ajuster le rayon de recherche
+                        </p>
+                    </div>
+                </div>
+                <div class="leaflet-sidebar-pane" id="a-propos">
+                    <h2 class="leaflet-sidebar-header">
+                        À propos
+                        <span class="leaflet-sidebar-close">
+                            <i class="las la-step-backward"></i>
+                        </span>
+                    </h2>
+                    <a href="https://agence-cohesion-territoires.gouv.fr" target="_blank"><img src="img/LOGO-ANCT+Marianne.png" width="100%" style = 'padding-bottom: 5%;'></a>
+                    <a href="https://www.banquedesterritoires.fr/" target="_blank"><img src="img/logo_bdt.png" width="100%" style = 'padding-bottom: 5%; '></a>
+                    <p>
+                        <b>Données :</b>
+                        ANCT & Banque des territoires
+                    </p>
+                    <p>
+                        <b>Réalisation :</b>
+                        ANCT, <a href = 'https://cartotheque.anct.gouv.fr/cartes' target="_blank">Service cartographie</a>
+                    </p>
+                    <p><b>Technologies utilisées :</b> Leaflet, Bootstrap, VueJS, Turf</p>
+                    <p><b>Géocodage : </b>API adresse (Base adresse nationale) et API Découpage administratif</p>
+                    <p>Les données affichées peuvent être téléchargées sur <a href="https://www.data.gouv.fr/fr/datasets/liste-des-structures-france-services/" target="_blank">data.gouv.fr</a>.</p>
+                    <p>Le code source de cet outil est disponible sur <a href="https://github.com/anct-carto/france_services" target="_blank">Github</a>.</p>
+                </div>
+            </div>
+        </div>`,
     components: {
         'search-group':SearchBar,
         'card':CardTemplate,
         'slider':Slider,
+        'result-count':resultsCountComponent,
     },
     props: ['sourceData', 'cardToHover','searchTypeFromMap'],
     data() {
         return {
             show:false,
             hoveredCard:'',
-            searchResult:'',
             searchType:'address',
+            shareText:"Partager"
         }
     },
     computed: {
@@ -795,17 +968,9 @@ const LeafletSidebar = {
             }).length;
             return nb
         },
-        getHoveredCard(id) {
-            if(id) {
-                this.$emit('markerToHover', id);
-            } else {
-                this.$emit('markerToHover', '');
-            }
-        },
         getSearchResult(result) {
             // emit search result from child to parent (map)
             this.$emit("searchResult",result);
-            this.searchResult = result;
         },
         getSearchType(e) {
             this.searchType = e;
@@ -813,8 +978,10 @@ const LeafletSidebar = {
         clearSearch() {
             this.$emit('clearMap');
         },
-        zoomOnResults() {
-            this.$emit('zoomOnResults')
+        shareResults() {
+            // this.$emit('zoomOnResults');
+            this.shareText = "Lien copié !";
+            shareLink(url.search);
         },
         radiusVal(e) {
             this.$emit('bufferRadius',e);
@@ -823,145 +990,23 @@ const LeafletSidebar = {
             this.$emit("openSearchPanel")
         },
     },
-    template: ` 
-        <div id="sidebar" class="leaflet-sidebar collapsed">
-            <!-- nav tabs -->
-            <div class="leaflet-sidebar-tabs">
-                <!-- top aligned tabs -->
-                <ul role="tablist">
-                    <li><a href="#home" role="tab"><i class="las la-home"></i></a></li>
-                    <li><a href="#search-tab" role="tab"><i class="las la-search"></i></a></li>
-                    <li><a href="#a-propos" role="tab"><i class="la la-question-circle"></i></a></li>
-                </ul>
-                <!-- bottom aligned tabs -->
-                <!--<ul role="tablist">
-                    <li><a href="#a-propos" role="tab"><i class="la la-question-circle"></i></a></li>
-                    <li><a href="https://github.com/cget-carto/France-services" target="_blank"><i class="la la-github"></i></a></li>
-                </ul>-->
-            </div>
-            <!-- panel content -->
-            <div class="leaflet-sidebar-content">
-                <div class="leaflet-sidebar-pane" id="home">
-                    <div class="leaflet-sidebar-header">
-                        <span>Accueil</span>
-                        <span class="leaflet-sidebar-close">
-                            <i class="las la-step-backward"></i>
-                        </span>
-                    </div>
-                    <div class="panel-content">
-                        <div class="header-logo">
-                            <img src="img/logo_FranceServices-01.png" id="programme-logo">
-                        </div>
-                        <p>France services est un nouveau modèle d’accès aux services publics pour les Français. L’objectif est de permettre à chaque citoyen d’accéder aux services publics du quotidien dans un lieu unique : réaliser sa demande de carte grise, remplir sa déclaration de revenus pour les impôts sur internet ou encore effectuer sa demande d’APL. Des agents polyvalents et formés sont présents dans la France services la plus proche de chez vous pour vous accompagner dans ces démarches.</p>
-                        <p>France services est un programme piloté par le <a href="https://www.cohesion-territoires.gouv.fr/" target="_blank">ministère de la Cohésion des territoires et des Relations avec les collectivités territoriales</a> via l'Agence nationale de la cohésion des territoires (ANCT).</p>
-                        <button type="button" class="card-btn btn btn-outline-primary btn-home-tab" @click="openSearchPanel">
-                            <i class="las la-search"></i>
-                            Trouver une France services
-                        </button>
-                        <button type="button" class="card-btn btn btn-outline-primary btn-home-tab" @click="window.open('https://agence-cohesion-territoires.gouv.fr/france-services-36')">
-                            <i class="las la-question-circle"></i>
-                            En savoir plus
-                        </button>
-                    </div>
-                </div>
-                <div class="leaflet-sidebar-pane" id="search-tab">
-                    <div class="leaflet-sidebar-header">
-                        <span>Recherche</span>
-                        <span class="leaflet-sidebar-close">
-                            <i class="las la-step-backward"></i>
-                        </span>
-                    </div>
-                    <div>
-                        <div id="search-inputs">
-                            <search-group @searchResult="getSearchResult" @searchType="getSearchType" @clearSearch="clearSearch" ref="searchGroup"></search-group>
-                            <hr/>
-                            <slider @radiusVal="radiusVal" v-if="params.get('qtype')=='address'"></slider>
-                        </div>
-                        <div id="search-results-header" v-if="sourceData.length>0">
-                            <span id="nb-results" v-if="params.get('qtype')!='click'">
-                                <b>{{ sourceData.length }}</b> résultat<span v-if="sourceData.length>1">s</span>
-                            </span>
-                            <button class="card-btn action btn btn-outline-primary btn"
-                                    style='float:right;margin-top:5px'
-                                    @click="zoomOnResults"
-                                    v-if="params.get('qtype')!='click'">
-                                <i class="las la-compress-arrows-alt"></i>
-                                Voir les résultats
-                            </button>
-                        </div>
-                        <div id="results" v-if="sourceData.length >0">
-                            <div style="margin-bottom:15px" v-if="params.get('qtype')!='click'">
-                                <result-count :nbResults="nbResults.siege" 
-                                            :type="'siege'" 
-                                            v-if="nbResults.siege">
-                                </result-count>
-                                <result-count :nbResults="nbResults.bus" 
-                                            :type="'bus'" 
-                                            v-if="nbResults.bus">
-                                </result-count>
-                                <result-count :nbResults="nbResults.antenne"
-                                            :type="'antenne'" 
-                                            v-if="nbResults.antenne">
-                                </result-count>
-                            </div>
-                            <card v-if="show"
-                                v-for="(fs, index) in sourceData"
-                                :collapse="collapse"
-                                :fs="fs" :key="index"
-                                :cardToHover="cardToHover"
-                                @hoverOnMap="getHoveredCard">
-                            </card>
-                        </div>
-                        <p style="text-align:center"v-if="Array.isArray(sourceData) & sourceData.length==0">
-                            <br>Aucun résultat ... Veuillez ajuster le rayon de recherche
-                        </p>
-                    </div>
-                </div>
-                <div class="leaflet-sidebar-pane" id="a-propos">
-                    <h2 class="leaflet-sidebar-header">
-                        À propos
-                        <span class="leaflet-sidebar-close">
-                            <i class="las la-step-backward"></i>
-                        </span>
-                    </h2>
-                    <a href="https://agence-cohesion-territoires.gouv.fr" target="_blank"><img src="img/logo_anct.png" width="100%" style = 'padding-bottom: 5%;'></a>
-                    <a href="https://www.banquedesterritoires.fr/" target="_blank"><img src="img/logo_bdt.png" width="100%" style = 'padding-bottom: 5%; '></a>
-                    <p>
-                        <b>Données :</b>
-                        ANCT & Banque des territoires
-                    </p>
-                    <p>
-                        <b>Réalisation :</b>
-                        ANCT, Pôle analyse & diagnostics territoriaux - <a href = 'https://cartotheque.anct.gouv.fr/cartes' target="_blank">Service cartographie</a>
-                    </p>
-                    <p><b>Technologies utilisées :</b> Leaflet, Bootstrap, VueJS, Turf, Étalab - API Geo </p>
-                    <p><b>Géocodage : </b>Étalab - Base adresse nationale</p>
-                    <p>Les données affichées sur cette carte sont disponibles et téléchargeables sur <a href="https://www.data.gouv.fr/fr/datasets/liste-des-structures-france-services/" target="_blank">data.gouv.fr</a>.</p>
-                    <p>Le code source de cet outil est disponible sur <a href="https://github.com/anct-carto/france_services" target="_blank">Github</a>.</p>
-                </div>
-            </div>
-        </div>
-    `
 };
 
 
 // ****************************************************************************
 
-// init vue-leaflet
-
-let markerToHover;
-
 const LeafletMap = {
     template: `
         <div>
             <sidebar ref="sidebar"
-                     :sourceData="fs_cards" 
+                     :sourceData="resultList" 
                      :cardToHover="hoveredMarker"
                      :searchTypeFromMap="searchType"
-                     @markerToHover="getMarkertoHover" 
+                     @hoverFeature="onMouseOver" 
+                     @clearHoveredFeature="hoveredLayer.clearLayers()"
                      @bufferRadius="updateBuffer" 
                      @searchResult="getSearchResult"
-                     @openSearchPanel="openSearchPanel"
+                     @openSearchPanel="sidebar.open('search-tab')"
                      @zoomOnResults="zoomOnResults"
                      @clearMap="clearMap">
             </sidebar>
@@ -973,98 +1018,158 @@ const LeafletMap = {
     },
     data() {
         return {
-            mapOptions: {
-                url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                attribution: '<a href="https://cartotheque.anct.gouv.fr/cartes" target="_blank">ANCT</a> | Fond cartographique &copy;<a href="https://stadiamaps.com/">Stadia Maps</a> &copy;<a href="https://openmaptiles.org/">OpenMapTiles</a> &copy;<a href="http://openstreetmap.org">OpenStreetMap</a>',
-                zoom: 6,
-                center: [46.413220, 1.219482],
-                zoomSnap: 0.25,
-                zoomControl: false,
+            config:{
+                map:{
+                    container:'mapid',
+                    tileLayer:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                    attribution: '<a href="https://cartotheque.anct.gouv.fr/cartes" target="_blank">ANCT</a> | Fond cartographique &copy;<a href="https://stadiamaps.com/">Stadia Maps</a> &copy;<a href="https://openmaptiles.org/">OpenMapTiles</a> &copy;<a href="http://openstreetmap.org">OpenStreetMap</a>',
+                    zoomPosition:'topright',
+                    scalePosition:'bottomright',
+                    initialView:{
+                        zoomControl: false,
+                        zoom: 5.5555,
+                        center: [46.413220, 1.219482],
+                        zoomSnap: 0.025,
+                        minZoom:4.55,
+                        maxZoom:18,
+                        preferCanvas:true,
+                    }
+                },
+                sidebar:{
+                    container: "sidebar",
+                    autopan: true,
+                    closeButton: true,
+                    position: "left",
+                },
             },
-            data: fs_tab_fetched,
-            circlesStyle: {
-                radius:5.5,
-                color:'white',
-                weight:1.2,
-                fillOpacity:1,
-                className:'fs-marker',
-            },
-            tooltipOptions: {
-                direction:'top',
-                className:'leaflet-tooltip-hovered',
+            styles:{
+                features:{
+                    default:{
+                        radius:5.5,
+                        color:'white',
+                        weight:1.2,
+                        fillOpacity:1,
+                        className:'fs-marker',        
+                    },
+                },
+                tooltip:{
+                    default:{
+                        radius:5.5,
+                        color:'white',
+                        weight:1.2,
+                        fillOpacity:1,
+                        className:'fs-marker',
+                    },
+                    clicked:{
+                        direction:'top',
+                        opacity:1,
+                        permanent:true, 
+                    }
+                }
             },
             hoveredMarker:'',
-            marker: null,
-            marker_tooltip: null,
-            depFilter:null,
-            fs_cards:'',
-            sidebar:null,
-            map:null,
-            markerToHover:{
-                coords:'',
-            },
-            searchRadius:10,
             searchType:'',
+            addressCoords: null,
+            addressLabel: null,
+            depResult:null,
+            searchRadius:10,
+            resultList:'',
         }
     },
     computed: {
-        adressLayer() {
-            return L.layerGroup({className:'address-marker-layer'}).addTo(this.map)
+        map() {
+            let defaultZoomLevel = this.iframe ? 6 : 5.55;
+            const map = new L.map(this.config.map.container,this.config.map.initialView, {
+                center: [urlSearchParams.get("lat") || 46.413220, urlSearchParams.get("lng") || 1.219482],
+                zoom:urlSearchParams.get("z") || defaultZoomLevel,
+            });
+            L.tileLayer(this.config.map.tileLayer,{ attribution:this.config.map.attribution }).addTo(map);
+            // zoom control, scale bar, fullscreen 
+            L.control.zoom({position: this.config.map.zoomPosition}).addTo(map);
+            L.control.scale({ position: this.config.map.scalePosition, imperial:false }).addTo(map);
+            L.control.fullscreen({
+                position:'topright',
+                forcePseudoFullScreen:true,
+                title:'Afficher la carte en plein écran'
+            }).addTo(map);           
+            // on click remove previous clicked marker
+            map.on("click",() => {
+                event.stopPropagation();
+                this.clearURLParams();
+                this.clearMap();
+            });            
+            // Get url parameters
+            map.on("moveend", () => {
+                // get map params
+                this.setMapExtent();
+                window.history.pushState({},'',url);
+            });
+
+            return map;
+        },
+        sidebar() {
+            const sidebar = window.L.control.sidebar(this.config.sidebar).addTo(this.map);
+            // prevent drag over the sidebar and the legend
+            preventDrag(sidebar, this.map);
+            return sidebar
         },
         buffer() {
-            if(this.marker) {
-                return L.circle(this.marker, {
+            if(this.addressCoords) {
+                return L.circle(this.addressCoords, {
                     color:'red',
                     fillColor:'rgba(0,0,0,1)',
                     interactive:false
                 })
             }
         },
+        fsLayer() {
+            return L.layerGroup({className:'fs-layer'}).addTo(this.map);
+        },
         clickedMarkerLayer() {
             return L.layerGroup({className:'clicked-marker-layer'}).addTo(this.map);
+        },
+        adressLayer() {
+            return L.layerGroup({className:'address-marker-layer'}).addTo(this.map)
         },
         maskLayer() {
             return L.layerGroup({className:'buffer-layer'}).addTo(this.map)
         },
-        iframe() {
-            if ( window.location === window.parent.location ) {	  
-                return true;
-            } else {	  
-                return false;
-            };
+        hoveredLayer() {
+            return L.layerGroup({className:'buffer-layer'}).addTo(this.map)
+        },
+        isIframe() {
+            return window.location === window.parent.location ? true : false
         },
     },
     watch: {
-        marker() {
-            let list_points = [];
+        addressCoords() { 
+        // marker() {
+            let dataGeom = [];
             // reset everything : clear layers, previous clicked markers
             this.clearMap();
             
             // drop marker of searched address on map
-            if(this.marker) {
-                let address_marker = L.marker(this.marker)
-                                .bindTooltip(this.marker_tooltip, {
+            if(this.addressCoords) {
+                L.marker(this.addressCoords)
+                                .bindTooltip(this.addressLabel, {
                                     permanent:true, 
                                     direction:"top", 
                                     className:'leaflet-tooltip-result'
-                                }).openTooltip();
-                this.adressLayer.addLayer(address_marker);
+                                }).openTooltip()
+                                .addTo(this.adressLayer);
             };
 
             // convert data lat lng to featureCollection
-            this.data.forEach(feature => {
-                list_points.push(turf.point([feature.latitude, feature.longitude], { id: feature.id_fs }))
-            });
-            list_points = turf.featureCollection(list_points);
-
+            this.data.forEach(feature => dataGeom.push(turf.point([feature.latitude, feature.longitude], { id: feature.id_fs })) );
+            dataGeom = turf.featureCollection(dataGeom);
             // compute distance for each point
-            list_points.features.forEach(feature => {
+            dataGeom.features.forEach(feature => {
                 // !!!!! REVERSE [lat,lon] TO [lon,lat] FORMAT to compute correct distance !!!!!!!!!!!!
                 lon_dest = feature.geometry.coordinates[1];
                 lat_dest = feature.geometry.coordinates[0];
 
                 Object.defineProperty(feature.properties, 'distance', {
-                    value: turf.distance([this.marker[1],this.marker[0]], [lon_dest, lat_dest], { 
+                    value: turf.distance([this.addressCoords[1],this.addressCoords[0]], [lon_dest, lat_dest], { 
                         units: 'kilometers' 
                     }),
                     writable: true,
@@ -1074,7 +1179,7 @@ const LeafletMap = {
             });
 
             // sort by distance
-            list_points.features.sort((a,b) => {
+            dataGeom.features.sort((a,b) => {
                 if(a.properties.distance > b.properties.distance) {
                     return 1;
                 } else if (a.properties.distance < b.properties.distance) {
@@ -1084,18 +1189,15 @@ const LeafletMap = {
                 }
             });
 
-            let closest_points = list_points.features;
-
             // send ids of found fs to data prop
-            let closest_fs = [];
-            closest_points_id = closest_points.map(e => { return e.properties.id })
-
-            closest_fs = this.data.filter(e => {
-                return closest_points_id.includes(e.id_fs)
+            let dataGeomIds = dataGeom.features.map(e => { return e.properties.id });
+            let closestPts = []; // closest points
+            closestPts = this.data.filter(e => {
+                return dataGeomIds.includes(e.id_fs)
             });
 
-            closest_fs.forEach(e => {
-                closest_points.forEach(d => {
+            closestPts.forEach(e => {
+                dataGeom.features.forEach(d => {
                     if(d.properties.id === e.id_fs) {
                         e.distance = Math.round(d.properties.distance*10)/10
                     }
@@ -1103,13 +1205,9 @@ const LeafletMap = {
             });
 
             // if radius in url then take url radius
-            if(this.params.has('radius')) {
-                searchRadius = this.params.get('radius')
-            } else {
-                searchRadius = this.searchRadius
-            }
+            urlSearchParams.has('radius') ? searchRadius = urlSearchParams.get('radius') : searchRadius = this.searchRadius
 
-            this.fs_cards = closest_fs.filter(e => {
+            this.resultList = closestPts.filter(e => {
                 return e.distance <= searchRadius
             }).sort((a,b) => {
                 if(a.distance > b.distance) {
@@ -1122,134 +1220,63 @@ const LeafletMap = {
             });
 
             // create buffer 
-            radius = this.searchRadius*1000;
-            perimetre_recherche = this.buffer.setRadius(radius);
-            this.maskLayer.addLayer(perimetre_recherche);
+            let radius = this.searchRadius*1000;
+            let searchPerimeterLayer = this.buffer.setRadius(radius);
+            this.maskLayer.addLayer(searchPerimeterLayer);
             // pan map view to circle with offset from sidebar
-            this.flyToBoundsWithOffset(perimetre_recherche);
+            this.flyToBoundsWithOffset(searchPerimeterLayer);
 
-            this.searchType = "address"
             // setup url params
-            this.params.set('qtype','address');
-            this.params.set('qlatlng',this.marker);
-            this.params.set('qlabel',this.marker_tooltip);
-            this.params.set('qr',this.searchRadius);
-            window.history.pushState({},'',this.url);
+            urlSearchParams.set('qtype','address');
+            urlSearchParams.set('qlatlng',this.addressCoords);
+            urlSearchParams.set('qlabel',this.addressLabel);
+            urlSearchParams.set('qr',this.searchRadius);
+            window.history.pushState({},'',url);
         },
-        depFilter() {
+        depResult() {
             // clear address layers (buffer + pin address)
             this.clearMap();
-            this.searchType = "dep";
 
             // filter data with matching departement code and send it to cards
-            this.fs_cards = this.data.filter(e => {
-                return e.insee_dep == this.depFilter
+            this.resultList = this.data.filter(e => {
+                return e.insee_dep == this.depResult
             }).sort((a,b) => {
                 let compare = 0;
                 a.lib_fs > b.lib_fs ? compare = 1 : compare = 0;
                 return compare 
             });
             // purge object from distance property (computed in 'address' search)
-            this.fs_cards.forEach(e => delete e.distance);
+            this.resultList.forEach(e => delete e.distance);
 
-            let filteredFeature = this.geom_dep.features.filter(e => {
-                return e.properties.insee_dep === this.depFilter;
-            });
-            let depMask = L.mask(filteredFeature, {
+            let filteredFeature = this.geomDep.features.find(e => e.properties.insee_dep === this.depResult );
+            L.mask(filteredFeature, {
                 fillColor:'rgba(0,0,0,.25)',
                 color:'red'
-            });
-            this.maskLayer.addLayer(depMask);
+            }).addTo(this.maskLayer);
 
             // pan to dep borders
             this.flyToBoundsWithOffset(new L.GeoJSON(filteredFeature));
+
             // setup url params
             this.clearURLParams();
-            this.params.set('qtype','admin');
-            this.params.set('qcode',this.depFilter);
-            let qlabel = filteredFeature[0].properties.lib_dep;
-            this.params.set('qlabel',qlabel);
+            urlSearchParams.set('qtype','admin');
+            urlSearchParams.set('qcode',this.depResult);
+            urlSearchParams.set('qlabel',filteredFeature.properties.lib_dep);
             // window.history.pushState({},'',this.url);            
         },
     },
-    mounted() {
-        session_data = JSON.parse(sessionStorage.getItem("session_local"));
+    async mounted() {
+        loadingScreen.show() // pendant le chargement, active le chargement d'écran
 
-        if(!session_data) {
-            init();
-            this.loadDep();
-        } else {
-            this.geom_dep = JSON.parse(sessionStorage.getItem("LocalGeomDep"));
-            page_status = "loaded";
-            loading.remove();
-            this.data = session_data;
-            fs_tab_fetched = session_data;
-        };
-
-        this.initMap();
-        this.checkPageStatus();
-    },
-    methods: {
-        initMap() {
-            this.params = params;
-            this.url = url;
-
-            searchQuery = document.getElementById('search-field');
-            searchQuery.value = params.get("qlabel") || "";
-
-            let defaultZoomLevel = this.iframe ? 6 : 5.55;
-
-            // const map = L.map('mapid', this.mapOptions);
-            const map = new L.map('mapid', {
-                center: [params.get("lat") || 46.413220, params.get("lng") || 1.219482],
-                zoom:params.get("z") || defaultZoomLevel,
-                preferCanvas: true,
-                zoomControl:false
-            });
-
-            // Get url parameters
-            map.on("moveend", () => {
-                // get map params
-                lat = map.getCenter().lat.toFixed(6);
-                lng = map.getCenter().lng.toFixed(6);
-                zoom = map.getZoom();
-
-                params.set("lat",lat);
-                params.set("lng",lng);
-                params.set("z",zoom);
-             
-                window.history.pushState({},'',url)
-            });
-            
-            // this.iframe ? map.setZoom(6) : map.setZoom(5.55);
-            L.tileLayer(this.mapOptions.url,{ attribution:this.mapOptions.attribution }).addTo(map);
-            this.map = map;
-            // zoom control, fullscreen & scale bar
-            L.control.zoom({position: 'topright'}).addTo(map);
-            L.control.fullscreen({
-                position:'topright',
-                forcePseudoFullScreen:true,
-            }).addTo(this.map);
-            L.control.scale({ position: 'bottomright', imperial:false }).addTo(map);
-
-            // sidebar
-            const sidebar = window.L.control.sidebar({
-                autopan: true, 
-                closeButton: true, 
-                container: "sidebar", 
-                position: "left"
-            }).addTo(map);
-            this.sidebar = sidebar;
-            
-            // legend
+        try {
+            // ajoute une légende
             const legend = L.control({position: 'topright'});
-
-            legend.onAdd = function (map) {
+            const map = this.map; // obligatoire pour la légende
+            legend.onAdd = (map) => {
                 let expand = false;
                 var div = L.DomUtil.create('div', 'leaflet-legend');
                 div.title = "Légende";
                 div.ariaLabel = "Légende";
-
                 let content_default = "<i class='la la-list' aria-label='Légende'></i>";
                 div.innerHTML += content_default;
                 
@@ -1275,100 +1302,80 @@ const LeafletMap = {
                 });
                 return div;
             };
-            legend.addTo(map);
-
-            // texte en cours de développement
-            // const enDeveloppement = L.control({position: 'topleft'});
-            // enDeveloppement.onAdd = function() {
-            //     let div = L.DomUtil.create('div','en-developpement');
-            //     div.innerHTML += `<h5 style="font-family:'Marianne-Bold';color:red;background-color:white; padding:5px; border: solid 1px red">/!\\ DEVELOPPEMENT EN COURS /!\\</h5>`;
-            //     return div;
-            // };
-            // enDeveloppement.addTo(map);
-
-            // on click remove previous clicked marker
-            map.on("click",(e) => {
-                event.stopPropagation();
-                // this.clickedMarkerLayer.clearLayers();
-                this.clearURLParams();
-                this.clearMap()
-
-            })
+            legend.addTo(this.map);
+            
+            this.geomDep = await this.loadGeom("data/geom_dep.geojson");
+            this.data = await getData(dataUrl); // charge les données
+    
+            this.createFeatures(this.data);
+    
+            loadingScreen.hide(); // enlève le chargement d'écran
+        } catch (error) {
+            console.error(error);
+            errorScreen.show();
+        }
+    },
+    methods: {
+        async loadGeom(file) {
+            const res = await fetch(file);
+            const data = await res.json();
+            return data;
         },
-        loadDep() {
-            fetch("data/geom_dep.geojson")
-            .then(res => res.json())
-            .then(res => {
-                this.geom_dep = res;
-                sessionStorage.setItem("LocalGeomDep",JSON.stringify(res))
-            });
+        createFeatures(fs_tab_fetched) {
+            // check if app loaded in an iframe
+            this.isIframe ? this.sidebar.open("home") : this.sidebar.open("search-tab"); 
+
+            for(let i=0; i<fs_tab_fetched.length; i++) {
+                let e = fs_tab_fetched[i];
+
+                let circle = L.circleMarker([e.latitude, e.longitude], this.styles.features.default);
+                circle.setStyle({fillColor:this.getMarkerColor(e.type)})
+
+                // zone tampon invisible autour du marqueur pour le sélectionner facilement
+                let circleAnchor = L.circleMarker([e.latitude, e.longitude], {
+                    radius:20,
+                    fillOpacity:0,
+                    opacity:0,
+                }).on("mouseover", (e) => {
+                    const id = e.sourceTarget.content.id_fs;
+                    this.onMouseOver(id);
+                    // send hovered marker's ID to children cards 
+                    if(this.resultList) { this.hoveredMarker = id; };  
+                }).on("mouseout", () => { 
+                    this.onMouseOut();
+                    this.hoveredMarker = '';
+                }).on("click", (e) => { 
+                    L.DomEvent.stopPropagation(e);
+                    this.displayInfo(e.sourceTarget.content);
+                });
+                circleAnchor.content = e;
+                [circle,circleAnchor].forEach(layer => this.fsLayer.addLayer(layer))
+            }
+
+            this.map.addLayer(this.fsLayer);
+
+            this.getURLSearchParams();
         },
         flyToBoundsWithOffset(layer) {
             let offset = document.querySelector('.leaflet-sidebar-content').getBoundingClientRect().width;
-            this.map.flyToBounds(layer, {paddingTopLeft: [offset, 0], duration:0.75})
+            this.map.flyToBounds(layer, {paddingTopLeft: [offset, 0], duration:0.75});
         },
-        onMouseover(fs) {
-            this.markerToHover.coords = [fs.latitude, fs.longitude];
-            this.markerToHover.lib = fs.lib_fs;
-            
-            id = fs.id_fs;
-            if(this.fs_cards) {
-                this.hoveredMarker = id; // send hovered marker's ID to children cards 
-            };
+        onMouseOver(id) {
+            this.hoveredLayer.clearLayers();
+            this.getMarkerToPin(id).addTo(this.hoveredLayer);
         },
         onMouseOut() {
-            this.hoveredMarker = '';
-            this.markerToHover.coords = '';
-            // this.markerToHover.lib = '';
-            this.getMarkertoHover('');  
+            this.hoveredLayer.clearLayers();
         },
         displayInfo(fs) {
-            // empêcher le déclenchement de la réinitialisation si cliqué
-
             this.sidebar.open('search-tab');          
             // send info of the one clicked point to children (cards)
-            if(fs.distance) {
-                delete fs.distance;
-            };
-            this.fs_cards = [fs];
+            if(fs.distance) { delete fs.distance; };
+            this.resultList = [fs];
             
-            // add white stroke to clicked
             this.clickedMarkerLayer.clearLayers();
-            let glowStyle = {
-                radius:10,
-                weight:10,
-                color:'rgba(245,245,245,.75)',
-                fillColor:this.getMarkerColor(fs.type),
-                fillOpacity:1,
-                interactive:false
-            };
-            let glow10 = new L.circleMarker([fs.latitude, fs.longitude], glowStyle, { weight:10 });
-            let glow15 = new L.circleMarker([fs.latitude, fs.longitude], glowStyle, { weight:15 });
-
-            let tooltipContent = `
-                    <span class='leaflet-tooltip-header ${this.getTooltipCategory(fs.type)}'>
-                        ${fs.lib_fs}
-                    </span>
-                    <span class='leaflet-tooltip-body'>
-                        ${fs.code_postal} ${fs.lib_com}
-                    </span>`
-
-            // add marker icon
-            let marker = new L.marker([fs.latitude, fs.longitude], {
-                icon:L.icon({
-                    iconUrl:this.getIconCategory(fs.type),  
-                    iconSize: [40, 40],
-                    iconAnchor: [20, 40]
-                })
-            }).addTo(this.map);
-
-            marker.bindTooltip(tooltipContent, {
-                direction:'top',
-                opacity:1,
-                permanent:true, 
-            });
-
-            [glow15,glow10,marker].forEach(el => this.clickedMarkerLayer.addLayer(el))
+            let marker = this.getMarkerToPin(fs.id_fs);
+            this.clickedMarkerLayer.addLayer(marker);
 
             // remove buffer and address marker
             this.maskLayer.clearLayers();
@@ -1376,93 +1383,49 @@ const LeafletMap = {
 
             // setup url params
             this.clearURLParams();
-            this.params.set("lat", this.map.getCenter().lat.toFixed(6))
-            this.params.set("lng", this.map.getCenter().lng.toFixed(6))
-            this.params.set("z", this.map.getZoom())
-            this.params.set("qtype","click");
-            this.params.set("id_fs",fs.id_fs);
-            window.history.pushState({},'',this.url);
+            this.setMapExtent();
+            urlSearchParams.set("qtype","click");
+            urlSearchParams.set("id_fs",fs.id_fs);
+            window.history.pushState({},'',url);
         },
-        // styles
-        getMarkerColor(type) {
-            switch (type) {
-                case "Siège":
-                    return "rgb(41,49,115)";
-                case "Antenne":
-                    return "#5770be";
-                case "Bus":
-                    return "#00ac8c";
-            };
-        },
-        getIconCategory(type) {
-            if(type === "Siège") {
-                return './img/picto_siege.png'
-            } else if(type === "Antenne"){
-                return './img/picto_antenne.png'
-            } 
-            else if(type === "Bus"){
-                return './img/picto_itinerante.png'
-            }
-        },
-        getTooltipCategory(type) {
-            if(type === "Siège") {
-                return 'siege'
-            } else if(type === "Antenne") {
-                return 'antenne'
-            } else if(type === "Bus") {
-                return 'bus'
-            }
-        },
-        getMarkertoHover(id) {
-            if (id) {
-                let fs = this.data.filter(e => {
-                    return e.id_fs == id;
-                })[0];
+        getMarkerToPin(id) {
+            const featureToHover = this.data.find(e => e.id_fs == id);
+            const hoveredFeature = L.marker([featureToHover.latitude,featureToHover.longitude],{
+                className:'fs-marker',
+                icon:L.icon({
+                    iconUrl:this.getIconCategory(featureToHover.type),  
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 40]
+                })
+            })
 
-                this.markerToHover.coords =  [fs.latitude, fs.longitude];
-                let type = fs.type;
+            const tooltipContent = `
+                <span class='leaflet-tooltip-header ${this.getTooltipCategory(featureToHover.type)}'>
+                    ${featureToHover.lib_fs}
+                </span>
+                <span class='leaflet-tooltip-body'>
+                    ${featureToHover.code_postal} ${featureToHover.lib_com}
+                </span>`
 
-                markerToHover = L.marker(this.markerToHover.coords, {
-                    className:'fs-marker',
-                    icon:L.icon({
-                        iconUrl:this.getIconCategory(type),  
-                        iconSize: [40, 40],
-                        iconAnchor: [20, 40]
-                    })
-                }).addTo(this.map);
-                
-                let tooltipContent = `
-                                <span class='leaflet-tooltip-header ${this.getTooltipCategory(type)}'>${fs.lib_fs}</span>
-                                <span class='leaflet-tooltip-body'>${fs.code_postal} ${fs.lib_com}</span>`
+            hoveredFeature.bindTooltip(tooltipContent, this.styles.tooltip.clicked);
 
-                markerToHover.bindTooltip(tooltipContent, {
-                    direction:'top',
-                    opacity:1,
-                    permanent:true, 
-                });
-
-            } else {
-                markerToHover.removeFrom(this.map);
-                this.markerToHover.coords = '';
-                this.markerToHover.lib = '';
-            }
+            return hoveredFeature
         },
         getSearchResult(e) {
+            this.searchType = e.resultType;
             // get result infos emitted from search group
             if(e.resultType == "address") {
-                this.marker = e.resultCoords;
-                this.marker_tooltip = e.resultLabel;
+                this.addressCoords = e.resultCoords;
+                this.addressLabel = e.resultLabel;
             } else {
-                if(this.geom_dep) {
-                    this.depFilter = e.resultCode;
-                }
+                this.depResult = e.resultCode;
             }
         },
         updateBuffer(new_radius) {
             this.searchRadius = new_radius;
             if(this.buffer) {
                 this.buffer.setRadius(new_radius*1000);
-                this.fs_cards = this.data.filter(e => {
+                this.resultList = this.data.filter(e => {
                     return e.distance <= new_radius
                 }).sort((a,b) => {
                     if(a.distance > b.distance) {
@@ -1477,132 +1440,174 @@ const LeafletMap = {
             };
         },
         zoomOnResults() {
-            let bounds = this.fs_cards.map(e => {
+            const bounds = this.resultList.map(e => {
                 return [e.latitude,e.longitude]
             });
             this.flyToBoundsWithOffset(bounds);
         },
         clearMap() {
-            this.fs_cards = '';
-            this.markerToHover.coordinates = '';
+            this.resultList = '';
             this.clickedMarkerLayer.clearLayers();
             this.maskLayer.clearLayers();
             this.adressLayer.clearLayers();
-            // this.map.flyTo(this.mapOptions.center, this.mapOptions.zoom, {duration:0.5});
-
             // purge url params
             this.clearURLParams();
         },
         clearURLParams() {
-           this.url.search = '';
+           url.search = '';
+           window.history.pushState({},'',url);
         },
-        openSearchPanel() {
-            this.sidebar.open('search-tab')
-        },
-        checkURLParams() {
-            let params = this.params;
-            queryType = params.get("qtype");
+        getURLSearchParams() {
+            let queryType = urlSearchParams.get("qtype");
+            searchQuery = document.getElementById('search-field');
+            searchQuery.value = urlSearchParams.get("qlabel") || "";
 
             if(queryType) {
                 this.sidebar.open("search-tab");
             }
             switch (queryType) {
                 case "address":
-                    let resultMarker = params.get("qlatlng").split(",");
-                    let resultLabel = params.get("qlabel");    
-                    this.marker = resultMarker;
-                    this.marker_tooltip = resultLabel;                    
-                    this.sidebar.open("search-tab");
+                    this.addressCoords = urlSearchParams.get("qlatlng").split(",");
+                    this.addressLabel = urlSearchParams.get("qlabel");    
                     break;
                 case "admin":
-                    let resultCodeDep = params.get("qcode");
-                    console.log(resultCodeDep);
-                    this.depFilter = resultCodeDep;
-                    this.sidebar.open("search-tab");
-                break;
+                    this.depResult = urlSearchParams.get("qcode");
+                    break;
                 case "click":
-                    let id = params.get("id_fs");
-                    let fs = fs_tab_fetched.filter(e => e.id_fs == id)[0];
-                    this.displayInfo(fs);                    
+                    let id = urlSearchParams.get("id_fs");
+                    let fs = this.data.find(e => e.id_fs == id);
+                    this.displayInfo(fs);
                     center = this.map.getCenter();
                     this.map.setView([center.lat, fs.longitude]);
                     break;
             };
+
         },
-        // check if app is loaded in an iframe
-        checkWindowLocation(ifTrue, ifFalse) {
-            if ( window.location === window.parent.location ) {	  
-                return ifTrue;
-            } else {	  
-                return ifFalse;
+        // inscrire les paramètres d'emprise de la carte dans l'URL
+        setMapExtent() {
+            urlSearchParams.set("lat", this.map.getCenter().lat.toFixed(6));
+            urlSearchParams.set("lng", this.map.getCenter().lng.toFixed(6));
+            urlSearchParams.set("z", this.map.getZoom());
+        },
+        // styles
+        getMarkerColor(type) {
+            switch (type) {
+                case "Siège":
+                    return "rgb(41,49,115)";
+                case "Antenne":
+                    return "#5770be";
+                case "Bus":
+                    return "#00ac8c";
             };
         },
-        // check if data from drive has been loaded 
-        checkPageStatus() {
-            if(page_status == undefined) {
-                window.setTimeout(this.checkPageStatus,10);
-            } else {
-                // check if app loaded in an iframe
-                this.iframe ? this.sidebar.open("home") : this.sidebar.open("search-tab"); 
-                // focus on search bar
-                // document.getElementById("search-field").focus();
-
-                let circleMarkersLayer = L.layerGroup({});
-
-                for(let i=0; i<fs_tab_fetched.length; i++) {
-                    e = fs_tab_fetched[i];
-
-                    let circle = L.circleMarker([e.latitude, e.longitude], this.circlesStyle);
-                    circle.setStyle({fillColor:this.getMarkerColor(e.type)})
-                    circle.content = e;
-
-                    let circleAnchor = L.circleMarker([e.latitude, e.longitude], {
-                        radius:20,
-                        fillOpacity:0,
-                        opacity:0
-                    }).on("mouseover", (e) => { 
-                        this.onMouseover(e.sourceTarget.content);
-                        this.getMarkertoHover(e.sourceTarget.content.id_fs)
-                    }).on("mouseout", () => { 
-                        this.onMouseOut();
-                    }).on("click", (e) => { 
-                        L.DomEvent.stopPropagation(e);
-                        this.displayInfo(e.sourceTarget.content);
-                    });
-                    circleAnchor.content = e;
-                    circleMarkersLayer.addLayer(circle);
-                    circleMarkersLayer.addLayer(circleAnchor);
-                }
-
-                this.map.addLayer(circleMarkersLayer);
-
-                this.checkURLParams();
+        getIconCategory(type) {
+            if(type === "Siège") {
+                return './img/picto_siege.png';
+            } else if(type === "Antenne"){
+                return './img/picto_antenne.png';
+            } 
+            else if(type === "Bus"){
+                return './img/picto_itinerante.png';
+            }
+        },
+        getTooltipCategory(type) {
+            if(type === "Siège") {
+                return 'siege';
+            } else if(type === "Antenne") {
+                return 'antenne';
+            } else if(type === "Bus") {
+                return 'bus';
             }
         },
     }
 };
 
-const routes = [
-    {
-        name:'carte',
-        path:'/',
-        component: LeafletMap
-    },
-    {
-        name: 'fiche',
-        path: '/fiche:id_fs', 
-        component: FichePDF, 
-        props:true,
-    },
-];
+
+// ****************************************************************************
+// ****************************************************************************
+
 
 const router = new VueRouter({
     // mode:'history',
-    routes // raccourci pour `routes: routes`
+    routes:[
+        {
+            name:'carte',
+            path:'/',
+            component: LeafletMap
+        },
+        {
+            name: 'fiche',
+            path: '/fiche:id_fs', 
+            component: FichePDF, 
+            props:true,
+        },
+    ]
 })
 
-// finale instance vue
-const vm = new Vue({
-    router,
+
+// ****************************************************************************
+// ****************************************************************************
+
+// injection code vue dans HTML
+const App = {
+    template: 
+        `<div>
+            <loading id="loading" v-if="state.isLoading"></loading>
+            <error-screen v-if="state2.error"></error-screen>
+            <router-view/>
+        </div>
+    `,
+    components: {
+        'loading':Loading,
+        'error-screen':ErrorTemplate,
+    },
+    data() {
+        return {
+            state:loadingScreen.state,
+            state2:errorScreen.state,
+        }
+    }
+}
+
+// instance vue
+new Vue({
     el: '#app',
+    router:router,
+    components: {
+        'app': App,
+    },
 });
+
+
+// ****************************************************************************
+// ****************************************************************************
+
+// Fonctions universelles à l'ensemble du code
+function shareLink(query) {
+    event.stopPropagation();
+    let linkToShare = `${url.origin}/france_services/${query}`;
+    navigator.clipboard.writeText(linkToShare);
+}
+
+
+// empêcher déplacement de la carte en maintenant/glissant le pointeur de souris sur sidebar
+function preventDrag(div, map) {
+    // Disable dragging when user's cursor enters the element
+    div.getContainer().addEventListener('mouseover', function () {
+        map.dragging.disable();
+    });
+
+    // Re-enable dragging when user's cursor leaves the element
+    div.getContainer().addEventListener('mouseout', function () {
+        map.dragging.enable();
+    });
+};
+
+// texte en cours de développement
+// const enDeveloppement = L.control({position: 'topleft'});
+// enDeveloppement.onAdd = function() {
+//     let div = L.DomUtil.create('div','en-developpement');
+//     div.innerHTML += `<h5 style="font-family:'Marianne-Bold';color:red;background-color:white; padding:5px; border: solid 1px red">/!\\ DEVELOPPEMENT EN COURS /!\\</h5>`;
+//     return div;
+// };
+// enDeveloppement.addTo(map);
