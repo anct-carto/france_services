@@ -933,7 +933,6 @@ const LeafletSidebar = {
         return {
             show:false,
             hoveredCard:'',
-            searchResult:'',
             searchType:'address',
             shareText:"Partager"
         }
@@ -972,7 +971,6 @@ const LeafletSidebar = {
         getSearchResult(result) {
             // emit search result from child to parent (map)
             this.$emit("searchResult",result);
-            this.searchResult = result;
         },
         getSearchType(e) {
             this.searchType = e;
