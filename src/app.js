@@ -504,12 +504,6 @@ const FichePDF = {
 // Card et boutons de contrôles card ****************************************************************************
 
 const CardControlBtn = {
-    props:["icon","text"],
-    data() {
-        return {
-            show:false
-        }
-    },
     template: `
         <button type="button" class="card-action-btn action btn btn-outline-primary btn" 
                 @click="event.stopPropagation()" 
@@ -519,8 +513,13 @@ const CardControlBtn = {
             <i :class="'las la-'+icon"></i>
             <span v-if="show" @mouseover="show=true" @mouseout="show=false">{{ text }}</span>
         </button>
-
-    `
+    `,
+    props:["icon","text"],
+    data() {
+        return {
+            show:false
+        }
+    },
 };
 
 
@@ -682,8 +681,7 @@ const CardTemplate = {
             window.open(gmapsUrl,"_blank").focus();
         },
         getPdf() {
-            id_fs = this.fs.id_fs;
-            this.$router.push({name: 'fiche', params: { id_fs: id_fs, fs:this.fs }});
+            this.$router.push({name: 'fiche', params: { id_fs: this.fs.id_fs, fs:this.fs }});
         },
         copyLink() {
             event.stopPropagation()
