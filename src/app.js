@@ -697,6 +697,7 @@ const CardTemplate = {
 
 
 
+
 // ****************************************************************************
 
 
@@ -785,6 +786,13 @@ const resultsCountComponent = {
 
 // ****************************************************************************
 
+function copyLink(url) {
+    event.stopPropagation()
+    let linkToShare = `${url}`;
+    navigator.clipboard.writeText(linkToShare);
+    // this.showTooltip = true;
+}
+
 const LeafletSidebar = {
     template: ` 
         <div id="sidebar" class="leaflet-sidebar collapsed">
@@ -860,12 +868,14 @@ const LeafletSidebar = {
                                 <b>{{ sourceData.length }}</b> résultat<span v-if="sourceData.length>1">s</span>
                             </span>
                             <button class="card-btn action btn btn-outline-primary btn"
+                                    v-if="params.get('qtype')!='click'"
                                     style='float:right;margin-top:5px'
                                     @click="zoomOnResults"
-                                    v-if="params.get('qtype')!='click'">
-                                <i class="las la-compress-arrows-alt"></i>
-                                Voir les résultats
+                                    @mouseleave="showTooltip=false">
+                                <i class="las la-share"></i>
+                                Partager
                             </button>
+                            <span class="copied-tooltip" v-if="showTooltip" style="left: 91%; top:21.5%">Lien copié!</span>
                         </div>
                         <div id="results" v-if="sourceData.length >0">
                             <div style="margin-bottom:15px" v-if="params.get('qtype')!='click'">
@@ -933,6 +943,7 @@ const LeafletSidebar = {
             hoveredCard:'',
             searchResult:'',
             searchType:'address',
+            showTooltip:false,
         }
     },
     computed: {
@@ -978,7 +989,9 @@ const LeafletSidebar = {
             this.$emit('clearMap');
         },
         zoomOnResults() {
-            this.$emit('zoomOnResults')
+            // this.$emit('zoomOnResults');
+            copyLink(url.href);
+            this.showTooltip=true;
         },
         radiusVal(e) {
             this.$emit('bufferRadius',e);
