@@ -6,8 +6,8 @@
 */
 
 const url = new URL(window.location.href);
-const params = url.searchParams;
-const qtype = params.get("qtype");
+const urlSearchParams = url.searchParams;
+const qtype = urlSearchParams.get("qtype");
 
 // Chargement données globales ****************************************************************************
 
@@ -455,8 +455,8 @@ const FichePDF = {
         let fs = this.fs;
         let coords = [fs.latitude,fs.longitude];
         let map = new L.map('map-pdf', {
-            center: [params.get("lat") || 46.413220, params.get("lng") || 1.219482],
-            zoom:params.get("z") || defaultZoomLevel,
+            center: [urlSearchParams.get("lat") || 46.413220, urlSearchParams.get("lng") || 1.219482],
+            zoom:urlSearchParams.get("z") || defaultZoomLevel,
             preferCanvas: true,
             zoomControl:false
         }).setView(coords,16);
@@ -635,7 +635,7 @@ const CardTemplate = {
     },
     mounted() {
         // control collapsing : if only one card is on side panel than collapse = true else false
-        if(this.collapse == true || params.get('qtype') == "click") {
+        if(this.collapse == true || urlSearchParams.get('qtype') == "click") {
             this.showInfo = true
         } else {
             this.showInfo = this.showInfo;
@@ -731,13 +731,13 @@ const Slider = {
         }
     },
     mounted() {
-        params.has("qr") ? this.radiusVal = params.get("qr") : this.radiusVal = 10;
+        urlSearchParams.has("qr") ? this.radiusVal = urlSearchParams.get("qr") : this.radiusVal = 10;
         this.emitRadius();
     },
     methods: {
         emitRadius() {
-            if(params.has("qlatlng")) {
-                params.set("qr",this.radiusVal);
+            if(urlSearchParams.has("qlatlng")) {
+                urlSearchParams.set("qr",this.radiusVal);
                 window.history.pushState({},'',url);
             };
             this.$emit("radiusVal",this.radiusVal);      
@@ -861,14 +861,14 @@ const LeafletSidebar = {
                         <div id="search-inputs">
                             <search-group @searchResult="getSearchResult" @searchType="getSearchType" @clearSearch="clearSearch" ref="searchGroup"></search-group>
                             <hr/>
-                            <slider @radiusVal="radiusVal" v-if="params.get('qtype')=='address'"></slider>
+                            <slider @radiusVal="radiusVal" v-if="urlSearchParams.get('qtype')=='address'"></slider>
                         </div>
                         <div id="search-results-header" v-if="sourceData.length>0">
-                            <span id="nb-results" v-if="params.get('qtype')!='click'">
+                            <span id="nb-results" v-if="urlSearchParams.get('qtype')!='click'">
                                 <b>{{ sourceData.length }}</b> résultat<span v-if="sourceData.length>1">s</span>
                             </span>
                             <button class="card-btn action btn btn-outline-primary btn"
-                                    v-if="params.get('qtype')!='click'"
+                                    v-if="urlSearchParams.get('qtype')!='click'"
                                     style='float:right;margin-top:5px'
                                     @click="zoomOnResults"
                                     @mouseleave="showTooltip=false">
@@ -878,7 +878,7 @@ const LeafletSidebar = {
                             <span class="copied-tooltip" v-if="showTooltip" style="left: 91%; top:21.5%">Lien copié!</span>
                         </div>
                         <div id="results" v-if="sourceData.length >0">
-                            <div style="margin-bottom:15px" v-if="params.get('qtype')!='click'">
+                            <div style="margin-bottom:15px" v-if="urlSearchParams.get('qtype')!='click'">
                                 <result-count :nbResults="nbResults.siege" 
                                             :type="'siege'" 
                                             v-if="nbResults.siege">
@@ -1005,8 +1005,6 @@ const LeafletSidebar = {
 
 // ****************************************************************************
 
-// init vue-leaflet
-
 const LeafletMap = {
     template: `
         <div>
@@ -1086,15 +1084,14 @@ const LeafletMap = {
             depResult:null,
             searchRadius:10,
             resultList:'',
-            urlSearchParams:params,
         }
     },
     computed: {
         map() {
             let defaultZoomLevel = this.iframe ? 6 : 5.55;
             const map = new L.map(this.config.map.container,this.config.map.initialView, {
-                center: [params.get("lat") || 46.413220, params.get("lng") || 1.219482],
-                zoom:params.get("z") || defaultZoomLevel,
+                center: [urlSearchParams.get("lat") || 46.413220, urlSearchParams.get("lng") || 1.219482],
+                zoom:urlSearchParams.get("z") || defaultZoomLevel,
             });
             L.tileLayer(this.config.map.tileLayer,{ attribution:this.config.map.attribution }).addTo(map);
             // zoom control, scale bar, fullscreen 
@@ -1218,7 +1215,7 @@ const LeafletMap = {
             });
 
             // if radius in url then take url radius
-            this.urlSearchParams.has('radius') ? searchRadius = this.urlSearchParams.get('radius') : searchRadius = this.searchRadius
+            urlSearchParams.has('radius') ? searchRadius = urlSearchParams.get('radius') : searchRadius = this.searchRadius
 
             this.resultList = closestPts.filter(e => {
                 return e.distance <= searchRadius
@@ -1240,10 +1237,10 @@ const LeafletMap = {
             this.flyToBoundsWithOffset(searchPerimeterLayer);
 
             // setup url params
-            this.urlSearchParams.set('qtype','address');
-            this.urlSearchParams.set('qlatlng',this.addressCoords);
-            this.urlSearchParams.set('qlabel',this.addressLabel);
-            this.urlSearchParams.set('qr',this.searchRadius);
+            urlSearchParams.set('qtype','address');
+            urlSearchParams.set('qlatlng',this.addressCoords);
+            urlSearchParams.set('qlabel',this.addressLabel);
+            urlSearchParams.set('qr',this.searchRadius);
             window.history.pushState({},'',url);
         },
         depResult() {
@@ -1272,9 +1269,9 @@ const LeafletMap = {
 
             // setup url params
             this.clearURLParams();
-            this.urlSearchParams.set('qtype','admin');
-            this.urlSearchParams.set('qcode',this.depResult);
-            this.urlSearchParams.set('qlabel',filteredFeature.properties.lib_dep);
+            urlSearchParams.set('qtype','admin');
+            urlSearchParams.set('qcode',this.depResult);
+            urlSearchParams.set('qlabel',filteredFeature.properties.lib_dep);
             // window.history.pushState({},'',this.url);            
         },
     },
@@ -1397,8 +1394,8 @@ const LeafletMap = {
             // setup url params
             this.clearURLParams();
             this.setMapExtent();
-            this.urlSearchParams.set("qtype","click");
-            this.urlSearchParams.set("id_fs",fs.id_fs);
+            urlSearchParams.set("qtype","click");
+            urlSearchParams.set("id_fs",fs.id_fs);
             window.history.pushState({},'',url);
         },
         getMarkerToPin(id) {
@@ -1471,23 +1468,23 @@ const LeafletMap = {
            window.history.pushState({},'',url);
         },
         getURLSearchParams() {
-            let queryType = this.urlSearchParams.get("qtype");
+            let queryType = urlSearchParams.get("qtype");
             searchQuery = document.getElementById('search-field');
-            searchQuery.value = this.urlSearchParams.get("qlabel") || "";
+            searchQuery.value = urlSearchParams.get("qlabel") || "";
 
             if(queryType) {
                 this.sidebar.open("search-tab");
             }
             switch (queryType) {
                 case "address":
-                    this.addressCoords = this.urlSearchParams.get("qlatlng").split(",");
-                    this.addressLabel = this.urlSearchParams.get("qlabel");    
+                    this.addressCoords = urlSearchParams.get("qlatlng").split(",");
+                    this.addressLabel = urlSearchParams.get("qlabel");    
                     break;
                 case "admin":
-                    this.depResult = this.urlSearchParams.get("qcode");
+                    this.depResult = urlSearchParams.get("qcode");
                     break;
                 case "click":
-                    let id = this.urlSearchParams.get("id_fs");
+                    let id = urlSearchParams.get("id_fs");
                     let fs = this.data.find(e => e.id_fs == id);
                     this.displayInfo(fs);
                     center = this.map.getCenter();
@@ -1498,9 +1495,9 @@ const LeafletMap = {
         },
         // inscrire les paramètres d'emprise de la carte dans l'URL
         setMapExtent() {
-            this.urlSearchParams.set("lat", this.map.getCenter().lat.toFixed(6));
-            this.urlSearchParams.set("lng", this.map.getCenter().lng.toFixed(6));
-            this.urlSearchParams.set("z", this.map.getZoom());
+            urlSearchParams.set("lat", this.map.getCenter().lat.toFixed(6));
+            urlSearchParams.set("lng", this.map.getCenter().lng.toFixed(6));
+            urlSearchParams.set("z", this.map.getZoom());
         },
         // styles
         getMarkerColor(type) {
