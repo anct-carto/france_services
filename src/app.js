@@ -684,9 +684,8 @@ const CardTemplate = {
             this.$router.push({name: 'fiche', params: { id_fs: this.fs.id_fs, fs:this.fs }});
         },
         copyLink() {
-            event.stopPropagation()
-            let linkToShare = `${url.origin}/france_services/?qtype=click&id_fs=${this.fs.id_fs}`;
-            navigator.clipboard.writeText(linkToShare);
+            event.stopPropagation();
+            shareLink(`?qtype=click&id_fs=${this.fs.id_fs}`)
             this.showTooltip = true;
         },
         tooltipOff() {
@@ -984,7 +983,7 @@ const LeafletSidebar = {
         shareResults() {
             // this.$emit('zoomOnResults');
             this.shareText = "Lien copié !";
-            shareLink(url.href);
+            shareLink(url.search);
         },
         radiusVal(e) {
             this.$emit('bufferRadius',e);
@@ -1586,9 +1585,9 @@ new Vue({
 // ****************************************************************************
 
 // Fonctions universelles à l'ensemble du code
-function shareLink(url) {
-    event.stopPropagation()
-    let linkToShare = `${url}`;
+function shareLink(query) {
+    event.stopPropagation();
+    let linkToShare = `${url.origin}/france_services/${query}`;
     navigator.clipboard.writeText(linkToShare);
 }
 
