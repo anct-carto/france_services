@@ -110,6 +110,38 @@ ul {
 	 
 }
 
+/* nom onglet au survol d'un bouton */
+.tab-name {
+	position: absolute;
+	display: none;
+	z-index: 10000;
+	left: 50px;
+	background: rgba(0,0,0,.8) !important;
+	font-family: 'Marianne-Bold';
+	font-size: .9rem;
+	text-transform: uppercase;
+	text-align: center;
+	color:white !important;
+	width: 100px;
+	border-radius: 3px;
+}
+
+.leaflet-sidebar-tabs ul li a:hover .tab-name{
+	display: inline-block;
+ }
+ 
+ .leaflet-sidebar-tabs ul li .tab-name:before{
+   content: "";
+   position: absolute;
+   top: 50%;
+   right: 100%; /* To the left of the tooltip */
+   margin-top: -5px;
+   border-width: 5px;
+   border-style: solid;
+   border-color: transparent rgba(0,0,0,.8) transparent transparent;
+}
+
+
 #search-tab {
 	padding-right: 30px;
 }
