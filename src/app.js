@@ -786,12 +786,6 @@ const resultsCountComponent = {
 
 // ****************************************************************************
 
-function copyLink(url) {
-    event.stopPropagation()
-    let linkToShare = `${url}`;
-    navigator.clipboard.writeText(linkToShare);
-    // this.showTooltip = true;
-}
 
 const LeafletSidebar = {
     template: ` 
@@ -870,12 +864,11 @@ const LeafletSidebar = {
                             <button class="card-btn action btn btn-outline-primary btn"
                                     v-if="urlSearchParams.get('qtype')!='click'"
                                     style='float:right;margin-top:5px'
-                                    @click="zoomOnResults"
-                                    @mouseleave="showTooltip=false">
+                                    @click="shareResults"
+                                    @mouseleave="shareText='Partager'">
                                 <i class="las la-share"></i>
-                                Partager
+                                {{ shareText }}
                             </button>
-                            <span class="copied-tooltip" v-if="showTooltip" style="left: 91%; top:21.5%">Lien copié!</span>
                         </div>
                         <div id="results" v-if="sourceData.length >0">
                             <div style="margin-bottom:15px" v-if="urlSearchParams.get('qtype')!='click'">
@@ -943,7 +936,7 @@ const LeafletSidebar = {
             hoveredCard:'',
             searchResult:'',
             searchType:'address',
-            showTooltip:false,
+            shareText:"Partager"
         }
     },
     computed: {
@@ -988,10 +981,10 @@ const LeafletSidebar = {
         clearSearch() {
             this.$emit('clearMap');
         },
-        zoomOnResults() {
+        shareResults() {
             // this.$emit('zoomOnResults');
-            copyLink(url.href);
-            this.showTooltip=true;
+            this.shareText = "Lien copié !";
+            shareLink(url.href);
         },
         radiusVal(e) {
             this.$emit('bufferRadius',e);
@@ -1593,6 +1586,12 @@ new Vue({
 // ****************************************************************************
 
 // Fonctions universelles à l'ensemble du code
+function shareLink(url) {
+    event.stopPropagation()
+    let linkToShare = `${url}`;
+    navigator.clipboard.writeText(linkToShare);
+}
+
 
 // empêcher déplacement de la carte en maintenant/glissant le pointeur de souris sur sidebar
 function preventDrag(div, map) {
