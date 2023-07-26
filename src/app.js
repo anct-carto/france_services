@@ -600,6 +600,18 @@ const CardTemplate = {
                         </li>
                     </ul>
                 </p>
+                <p v-if="fs.site_web" @click="event.stopPropagation()">
+                    <i class = "las la-desktop"></i>                    
+                    <ul>
+                        <li><a :href="fs.site_web" target="_blank" aria-label="">Voir le site internet</a></li>
+                    </ul>
+                </p>
+                <p v-if="fs.prise_rdv && fs.prise_rdv == 'Oui'" @click="event.stopPropagation()">
+                    <i class = "las la-calendar-check"></i>                    
+                    <ul>
+                        <li>Prise de rendez-vous possible</li>
+                    </ul>
+                </p>
                 <p v-if="fs.commentaire" @click="event.stopPropagation()" class="card-body-commentaire">
                     <i class = "las la-info-circle"></i>                    
                     <ul>
