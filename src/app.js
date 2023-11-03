@@ -918,10 +918,8 @@ const LeafletSidebar = {
                         </span>
                     </h2>
                     <a href="https://agence-cohesion-territoires.gouv.fr" target="_blank"><img src="img/LOGO-ANCT+Marianne.png" width="100%" style = 'padding-bottom: 5%;'></a>
-                    <a href="https://www.banquedesterritoires.fr/" target="_blank"><img src="img/logo_bdt.png" width="100%" style = 'padding-bottom: 5%; '></a>
                     <p>
-                        <b>Données :</b>
-                        ANCT & Banque des territoires
+                        <b>Données :</b>ANCT
                     </p>
                     <p>
                         <b>Réalisation :</b>
