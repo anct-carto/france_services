@@ -23,8 +23,9 @@ async function getData(path) {
         try {
             console.log("Chargement depuis data.gouv");
             let data = await fetchCsv(path);
+            // s'assurer qu'il n'y a pas de coordonnées nulles sinon la page plante
             data = data.filter(e => e.latitude != 0 & e.latitude != "" & e.longitude != 0 & e.longitude != "" & e.id_fs != "")
-            // transformations avant utilisation
+            // transformations avant utilisation pour obtenir les catégories de FS
             data.forEach(e => {
                 e.itinerance = e["itinerance"].toLowerCase();               
                 if(e.itinerance == "non" || e.itinerance == "") {
