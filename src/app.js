@@ -919,7 +919,7 @@ const LeafletSidebar = {
                     </h2>
                     <a href="https://agence-cohesion-territoires.gouv.fr" target="_blank"><img src="img/LOGO-ANCT+Marianne.png" width="100%" style = 'padding-bottom: 5%;'></a>
                     <p>
-                        <b>Données :</b>ANCT
+                        <b>Source des données : </b>ANCT
                     </p>
                     <p>
                         <b>Réalisation :</b>
@@ -927,7 +927,7 @@ const LeafletSidebar = {
                     </p>
                     <p><b>Technologies utilisées :</b> Leaflet, Bootstrap, VueJS, Turf</p>
                     <p><b>Géocodage : </b>API adresse (Base adresse nationale) et API Découpage administratif</p>
-                    <p>Les données affichées peuvent être téléchargées sur <a href="https://www.data.gouv.fr/fr/datasets/liste-des-structures-france-services/" target="_blank">data.gouv.fr</a>.</p>
+                    <p>Les données sources sont disponibles sur <a href="https://www.data.gouv.fr/fr/datasets/liste-des-structures-france-services/" target="_blank">data.gouv.fr</a>.</p>
                     <p>Le code source de cet outil est disponible sur <a href="https://github.com/anct-carto/france_services" target="_blank">Github</a>.</p>
                 </div>
             </div>
