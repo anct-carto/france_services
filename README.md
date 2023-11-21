@@ -19,7 +19,7 @@ L'annuaire cartographique France services permet aux usagers de trouver, pour un
 
 
 ## Données
-Les données sont conjointement éditées par l'ANCT et la Banque des territoires. Elles correspondent aux informations saisies par les agents présents en structures.
+Les données sont fiabilisées et diffusées par l'ANCT. Elles correspondent aux informations saisies par les agents France services.
 
 Les données sont diffusées sous licence Ouverte Étalab 2.0 sur la page data.gouv France services : https://www.data.gouv.fr/fr/datasets/liste-des-structures-france-services/ 
 
