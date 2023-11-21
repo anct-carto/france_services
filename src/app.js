@@ -5,6 +5,8 @@
 
 */
 
+// préparation paramètres requête (recherche ou clic) enregistrés dans l'URL 
+// exemple : https://anct-carto.github.io/france_services/?qtype=address&qlatlng=48.850699%2C2.308628&qlabel=20+Avenue+de+S%C3%A9gur+75007+Paris&qr=10&lat=48.850744&lng=2.196202&z=11.625
 const url = new URL(window.location.href);
 const urlSearchParams = url.searchParams;
 const qtype = urlSearchParams.get("qtype");
@@ -93,7 +95,8 @@ const Loading = {
 
 
 // ****************************************************************************
-// écran chargement 
+// écran erreur (utilisé dans le composant app)
+// affiché s'il y a un problème avec les données
 
 class ErrorScreen {
     constructor(code) {
@@ -122,7 +125,9 @@ const ErrorTemplate = {
     `
 }
 
-// ****************************************************************************
+// CHAMP DE RECHERCHE ****************************************************************************
+// deux modes : recherche par adresse ou par département
+// URL API adresse ou admin chargée en fonction du mode sélectionné
 
 const SearchBar = {
     template: `
@@ -343,7 +348,9 @@ const SearchBar = {
 
 
 // FICHE PDF ****************************************************************************
+// fiche pdf au format 14 générée au clic "télécharger" des card 
 
+// dépendance
 window.jsPDF = window.jspdf.jsPDF
 
 const FichePDF = {
@@ -656,6 +663,7 @@ const CardTemplate = {
     },
     methods: {
         getClass() {
+            // utiisé pour couleur tooltip dans style.css 
             return {
                 'fs-siege': this.fs.type === 'Siège',
                 'fs-antenne': this.fs.type === 'Antenne',
@@ -663,18 +671,23 @@ const CardTemplate = {
             }
         },
         getFontIcon() {
+            // utilisé pour renvoyer une maison ou un bus en header de la card
             return {
                 'las la-home': this.fs.itinerance === 'non',
                 'las la-shuttle-van': this.fs.itinerance === 'oui',
             }
         },
         getHoveredCard() {
+            // si marqueur survolé sur la carte 
+            // créé un liseré rouge et un style différent sur la carte
+            // dans le fichier style.css au moyen du nom de classe correspondant
             if(this.cardToHover === this.fs.id_fs) {
                 return "hovered"
             } else {
                 return "card"
             }
         },
+        // boutons de controles  
         zoomOnMap() {
             event.stopPropagation();
             map = this.$parent.map;
@@ -701,6 +714,7 @@ const CardTemplate = {
             shareLink(`?qtype=click&id_fs=${this.fs.id_fs}`)
             this.showTooltip = true;
         },
+        // affiche ou masque la tooltip "lien copié!" si clic sur le btn "partager"
         tooltipOff() {
             this.showTooltip = false;
         },
@@ -712,7 +726,7 @@ const CardTemplate = {
 
 // ****************************************************************************
 
-
+// régler le rayon de recherche
 const Slider = {
     template:`
         <div id="range-slider-group">
@@ -738,17 +752,20 @@ const Slider = {
             const val = this.radiusVal;
             const min = this.minRadiusVal;
             const max = this.maxRadiusVal;
+            // style valeur affiché sur le slider
             const pctValue = Number((val-min)*100/(max-min));
             bubble.style.left = `calc(${pctValue}% + (${5 - pctValue * 0.6}px))`;
         }
     },
     mounted() {
+        // récupère la valeur du rayon dans l'URL si dispo sinon donne la valeur par défaut
         urlSearchParams.has("qr") ? this.radiusVal = urlSearchParams.get("qr") : this.radiusVal = 10;
         this.emitRadius();
     },
     methods: {
         emitRadius() {
             if(urlSearchParams.has("qlatlng")) {
+                // stocker rayon de recherche dans requête URL 
                 urlSearchParams.set("qr",this.radiusVal);
                 window.history.pushState({},'',url);
             };
@@ -757,8 +774,9 @@ const Slider = {
     },
 };
 
-// ****************************************************************************
+// Compteur de résultats ****************************************************************************
 
+// par type de structure
 const resultsCountComponent = {
     props:['nbResults','type'],
     computed: {
@@ -798,7 +816,7 @@ const resultsCountComponent = {
 
 // ****************************************************************************
 
-
+// sidebar
 const LeafletSidebar = {
     template: ` 
         <div id="sidebar" class="leaflet-sidebar collapsed">
@@ -953,6 +971,7 @@ const LeafletSidebar = {
             return this.$parent.map;
         },
         nbResults() {
+            // compteur résultats par type de structure
             return {
                 siege:this.countResultByType("Siège"),
                 bus:this.countResultByType("Bus"),
@@ -966,6 +985,7 @@ const LeafletSidebar = {
             this.collapse = false;
         },
         cardToHover(card_id) {
+            // styliser la card d'une structure survolée sur la carte
             hoveredCard = card_id;
         },
         searchTypeFromMap(value) {
@@ -1006,6 +1026,8 @@ const LeafletSidebar = {
 
 // ****************************************************************************
 
+// CARTE = composant principal 
+// c'est le composant parent et là où se déroulent la grande majorité des actionss
 const LeafletMap = {
     template: `
         <div>
@@ -1030,6 +1052,7 @@ const LeafletMap = {
     data() {
         return {
             config:{
+                // config initiale
                 map:{
                     container:'mapid',
                     tileLayer:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
@@ -1078,6 +1101,7 @@ const LeafletMap = {
                     }
                 }
             },
+            // variables de communication utilisées avec les composants enfants
             hoveredMarker:'',
             searchType:'',
             addressCoords: null,
@@ -1124,7 +1148,9 @@ const LeafletMap = {
             preventDrag(sidebar, this.map);
             return sidebar
         },
+        // CALQUES
         buffer() {
+            // calque pour le rayon de recherche
             if(this.addressCoords) {
                 return L.circle(this.addressCoords, {
                     color:'red',
@@ -1149,12 +1175,16 @@ const LeafletMap = {
             return L.layerGroup({className:'buffer-layer'}).addTo(this.map)
         },
         isIframe() {
+            // savoir s'il faut ouvrir l'onglet accueil ou recherche
             return window.location === window.parent.location ? true : false
         },
     },
     watch: {
+        // surveille l'objet renvoyé par la barre de recherche
+        // et retrouve les résultats au moyen d'un géotraitement
+        // calcul de la distance entre le couple XY de l'adresse et  toutes les FS 
+        // puis ne retient que les plus proches, seulement la valeur du slider rayon de recherche
         addressCoords() { 
-        // marker() {
             let dataGeom = [];
             // reset everything : clear layers, previous clicked markers
             this.clearMap();
@@ -1218,6 +1248,7 @@ const LeafletMap = {
             // if radius in url then take url radius
             urlSearchParams.has('radius') ? searchRadius = urlSearchParams.get('radius') : searchRadius = this.searchRadius
 
+            // filtre avec la distance inférieure au rayon de recherche puis tri croissant
             this.resultList = closestPts.filter(e => {
                 return e.distance <= searchRadius
             }).sort((a,b) => {
@@ -1230,7 +1261,7 @@ const LeafletMap = {
                 }
             });
 
-            // create buffer 
+            // create buffer (utilisé uniquement pour la visualisation)
             let radius = this.searchRadius*1000;
             let searchPerimeterLayer = this.buffer.setRadius(radius);
             this.maskLayer.addLayer(searchPerimeterLayer);
@@ -1244,6 +1275,8 @@ const LeafletMap = {
             urlSearchParams.set('qr',this.searchRadius);
             window.history.pushState({},'',url);
         },
+        // surveille l'objet renvoyé par la barre de recherche
+        // et retrouve les résultats au moyen d'un filtre par insee dep
         depResult() {
             // clear address layers (buffer + pin address)
             this.clearMap();
@@ -1259,6 +1292,7 @@ const LeafletMap = {
             // purge object from distance property (computed in 'address' search)
             this.resultList.forEach(e => delete e.distance);
 
+            // renvoie la géométrie du département recherché pour créer un masque
             let filteredFeature = this.geomDep.features.find(e => e.properties.insee_dep === this.depResult );
             L.mask(filteredFeature, {
                 fillColor:'rgba(0,0,0,.25)',
@@ -1318,7 +1352,7 @@ const LeafletMap = {
             this.geomDep = await this.loadGeom("data/geom_dep.geojson");
             this.data = await getData(dataUrl); // charge les données
     
-            this.createFeatures(this.data);
+            this.createFeatures(this.data); // représente les points sur la carte
     
             loadingScreen.hide(); // enlève le chargement d'écran
         } catch (error) {
@@ -1328,6 +1362,7 @@ const LeafletMap = {
     },
     methods: {
         async loadGeom(file) {
+            // fonction de chargement de fichier geojson ou json (utilisée dans plein de projets)
             const res = await fetch(file);
             const data = await res.json();
             return data;
@@ -1339,27 +1374,31 @@ const LeafletMap = {
             for(let i=0; i<fs_tab_fetched.length; i++) {
                 let e = fs_tab_fetched[i];
 
+                // marqueur graphique ; (affiché sur la carte) 
+                // aspect visuel uniquement, ne gère aucune interaction
                 let circle = L.circleMarker([e.latitude, e.longitude], this.styles.features.default);
                 circle.setStyle({fillColor:this.getMarkerColor(e.type)})
 
-                // zone tampon invisible autour du marqueur pour le sélectionner facilement
+                // marqueur de plus gros rayon invisible par dessus le marqueur affiché précédemment
+                // utile survoler ou cliquer plus facilement (autrement le premier marqueur est trop petit)
                 let circleAnchor = L.circleMarker([e.latitude, e.longitude], {
                     radius:20,
-                    fillOpacity:0,
+                    // opacité à 0 pour ne pas l'afficher
+                    fillOpacity:0, 
                     opacity:0,
                 }).on("mouseover", (e) => {
-                    const id = e.sourceTarget.content.id_fs;
-                    this.onMouseOver(id);
+                    const id = e.sourceTarget.content.id_fs; // 1. récupère l'id de la FS
+                    this.onMouseOver(id); // 2. générer un pin à partir de l'id (filtre le tableau oriiginal) 
                     // send hovered marker's ID to children cards 
-                    if(this.resultList) { this.hoveredMarker = id; };  
+                    if(this.resultList) { this.hoveredMarker = id; }; 
                 }).on("mouseout", () => { 
                     this.onMouseOut();
                     this.hoveredMarker = '';
                 }).on("click", (e) => { 
                     L.DomEvent.stopPropagation(e);
-                    this.displayInfo(e.sourceTarget.content);
+                    this.displayInfo(e.sourceTarget.content); // au clic, récupère les infos de la structure
                 });
-                circleAnchor.content = e;
+                circleAnchor.content = e; // le contenu de ce marqueur invisible 
                 [circle,circleAnchor].forEach(layer => this.fsLayer.addLayer(layer))
             }
 
@@ -1368,6 +1407,8 @@ const LeafletMap = {
             this.getURLSearchParams();
         },
         flyToBoundsWithOffset(layer) {
+            // emprise de la carte fixée sur le territoire résultat
+            // cette fonction est utile pour faire décaler le centre de la carte sur le côté droit si le panneau est ouvert
             let offset = document.querySelector('.leaflet-sidebar-content').getBoundingClientRect().width;
             this.map.flyToBounds(layer, {paddingTopLeft: [offset, 0], duration:0.75});
         },
@@ -1379,6 +1420,7 @@ const LeafletMap = {
             this.hoveredLayer.clearLayers();
         },
         displayInfo(fs) {
+            // récupèr les infos relatives à une FS cliquée et envoie la vers la sidebar 
             this.sidebar.open('search-tab');          
             // send info of the one clicked point to children (cards)
             if(fs.distance) { delete fs.distance; };
@@ -1400,6 +1442,7 @@ const LeafletMap = {
             window.history.pushState({},'',url);
         },
         getMarkerToPin(id) {
+            // affiche un pin au dessus d'une structure survolée depuis la sidebar
             const featureToHover = this.data.find(e => e.id_fs == id);
             const hoveredFeature = L.marker([featureToHover.latitude,featureToHover.longitude],{
                 className:'fs-marker',
@@ -1433,6 +1476,8 @@ const LeafletMap = {
             }
         },
         updateBuffer(new_radius) {
+            // actualise le rayon du buffer selon le rayon de recherche saisi 
+            // et renvoie les bons résultats en conséquence vers la sidebar
             this.searchRadius = new_radius;
             if(this.buffer) {
                 this.buffer.setRadius(new_radius*1000);
@@ -1451,6 +1496,7 @@ const LeafletMap = {
             };
         },
         zoomOnResults() {
+            // fixe l'emprise de la carte sur la bbox des points sur la carte
             const bounds = this.resultList.map(e => {
                 return [e.latitude,e.longitude]
             });
@@ -1465,10 +1511,14 @@ const LeafletMap = {
             this.clearURLParams();
         },
         clearURLParams() {
+            // réinitialise les paramètres de requête de la carte
            url.search = '';
            window.history.pushState({},'',url);
         },
         getURLSearchParams() {
+            // récupère les paramètres de requête de l'URL 
+            // et renvoie les données correspondantes sur la carte 
+            // directement au chargement de cette dernière
             let queryType = urlSearchParams.get("qtype");
             searchQuery = document.getElementById('search-field');
             searchQuery.value = urlSearchParams.get("qlabel") || "";
@@ -1537,6 +1587,7 @@ const LeafletMap = {
 // ****************************************************************************
 // ****************************************************************************
 
+// vue-router utilisé uniquement pour générer la fiche pdf
 
 const router = new VueRouter({
     // mode:'history',
