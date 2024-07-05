@@ -28,18 +28,34 @@ async function getData(path) {
             // s'assurer qu'il n'y a pas de coordonnées nulles sinon la page plante
             data = data.filter(e => e.latitude != 0 & e.latitude != "" & e.longitude != 0 & e.longitude != "" & e.id_fs != "")
             // transformations avant utilisation pour obtenir les catégories de FS
-            data.forEach(e => {
-                e.itinerance = e["itinerance"].toLowerCase();               
-                if(e.itinerance == "non" || e.itinerance == "") {
-                    if(e.format_fs == "Site principal") {
-                        e.type = "Siège";
-                    } else if(e.format_fs == "Antenne") {
-                        e.type = "Antenne";
+            // data.forEach(e => {
+            //     e.itinerance = e["itinerance"].toLowerCase();               
+            //     if(e.itinerance == "non" || e.itinerance == "") {
+            //         if(e.format_fs == "Site principal") {
+            //             e.type = "Siège";
+            //         } else if(e.format_fs == "Antenne") {
+            //             e.type = "Antenne";
+            //         }
+            //     } else {
+            //         e.type=  "Bus";
+            //     };
+                // });
+                data.forEach(e => {
+                    e.type = e.type.toLowerCase(); // Assurez-vous que les comparaisons sont insensibles à la casse
+                
+                    if (e.type === "antenne") {
+                        e.type = "antenne";
+                    } else if (e.type === "principal") {
+                        if (["fixe", "fixe_antenne(s)", "multisites"].includes(e.format.toLowerCase())) {
+                            e.type = "siege";
+                        } else if (["bus_équivalent", "itinérante"].includes(e.format.toLowerCase())) {
+                            e.type = "bus";
+                        }
                     }
-                } else {
-                    e.type=  "Bus";
-                };
-            });
+                });
+                
+
+            
             sessionStorage.setItem('session_data1',JSON.stringify(data));
             return data
         } catch (error) {
@@ -365,7 +381,7 @@ const FichePDF = {
                 <span style="font-size:.8em">Fiche d'information France services - données extraites le {{ date }}</span>
                 <h2 style='font-weight:bolder'><b>{{ fs.lib_fs }}</b></h2><br>
                 <div class = "intro">
-                    <p v-if="fs.itinerance=='oui'">
+                    <p v-if="fs.type=='bus'">
                         <span>Attention : cette France services est en itinérance</span>
                     </p>
                     <p>
@@ -446,11 +462,11 @@ const FichePDF = {
         },
         tooltipType() {
             let type = this.fs.type;
-            if(type === "Siège") {
+            if(type === "siege") {
                 return 'siege'
-            } else if(type === "Antenne") {
+            } else if(type === "antenne") {
                 return 'antenne'
-            } else if(type === "Bus") {
+            } else if(type === "bus") {
                 return 'bus'
             }
         },
@@ -551,7 +567,7 @@ const CardTemplate = {
         </div>
         <div class="card-body"">
             <div class = "intro">
-                <p v-if="fs.itinerance=='oui'">
+                <p v-if="fs.type=='bus'">
                     <i class="las la-exclamation-circle"></i> 
                     <ul>
                         <li>Cette France services est en itinérance</li>
@@ -665,16 +681,16 @@ const CardTemplate = {
         getClass() {
             // utiisé pour couleur tooltip dans style.css 
             return {
-                'fs-siege': this.fs.type === 'Siège',
-                'fs-antenne': this.fs.type === 'Antenne',
-                'fs-bus': this.fs.type === 'Bus',
+                'fs-siege': this.fs.type === 'siege',
+                'fs-antenne': this.fs.type === 'antenne',
+                'fs-bus': this.fs.type === 'bus',
             }
         },
         getFontIcon() {
             // utilisé pour renvoyer une maison ou un bus en header de la card
             return {
-                'las la-home': this.fs.itinerance === 'non',
-                'las la-shuttle-van': this.fs.itinerance === 'oui',
+                'las la-home': this.fs.type === 'siege',
+                'las la-shuttle-van': this.fs.type === 'bus',
             }
         },
         getHoveredCard() {
@@ -800,7 +816,7 @@ const resultsCountComponent = {
                 case "siege":
                     return 'fixe';
                 case "bus":
-                    return "itinérante";
+                    return "bus";
                 case "antenne":
                     return "antenne";
             }
@@ -973,9 +989,9 @@ const LeafletSidebar = {
         nbResults() {
             // compteur résultats par type de structure
             return {
-                siege:this.countResultByType("Siège"),
-                bus:this.countResultByType("Bus"),
-                antenne:this.countResultByType("Antenne")
+                siege:this.countResultByType("siege"),
+                bus:this.countResultByType("bus"),
+                antenne:this.countResultByType("antenne")
             }
         }
     },
@@ -1553,30 +1569,30 @@ const LeafletMap = {
         // styles
         getMarkerColor(type) {
             switch (type) {
-                case "Siège":
+                case "siege":
                     return "rgb(41,49,115)";
-                case "Antenne":
+                case "antenne":
                     return "#5770be";
-                case "Bus":
+                case "bus":
                     return "#00ac8c";
             };
         },
         getIconCategory(type) {
-            if(type === "Siège") {
+            if(type === "siege") {
                 return './img/picto_siege.png';
-            } else if(type === "Antenne"){
+            } else if(type === "antenne"){
                 return './img/picto_antenne.png';
             } 
-            else if(type === "Bus"){
+            else if(type === "bus"){
                 return './img/picto_itinerante.png';
             }
         },
         getTooltipCategory(type) {
-            if(type === "Siège") {
+            if(type === "siege") {
                 return 'siege';
-            } else if(type === "Antenne") {
+            } else if(type === "antenne") {
                 return 'antenne';
-            } else if(type === "Bus") {
+            } else if(type === "bus") {
                 return 'bus';
             }
         },
