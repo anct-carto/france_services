@@ -824,7 +824,7 @@ const resultsCountComponent = {
     },
     template: `
         <span class="nb-result-per-type" :style="styleSheet">
-            <b>{{ nbResults }}</b> {{ text }}<span v-if="nbResults>1">s</span>
+            <b>{{ nbResults }}</b> {{ text }}<span v-if="nbResults>1"></span>
         </span>
     `
 }
