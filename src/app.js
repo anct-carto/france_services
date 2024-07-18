@@ -820,15 +820,20 @@ const resultsCountComponent = {
                 case "antenne":
                     return "antenne";
             }
+        },
+        pluralText() {
+            if (this.type === "bus") {
+                return this.text;
+            }
+            return this.nbResults > 1 ? this.text + 's' : this.text;
         }
     },
     template: `
         <span class="nb-result-per-type" :style="styleSheet">
-            <b>{{ nbResults }}</b> {{ text }}<span v-if="nbResults>1"></span>
+            <b>{{ nbResults }}</b> {{ pluralText }}
         </span>
     `
 }
-
 
 // ****************************************************************************
 
