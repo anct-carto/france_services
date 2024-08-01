@@ -888,7 +888,7 @@ const LeafletSidebar = {
                             <i class="las la-search"></i>
                             Trouver une France services
                         </button>
-                        <button type="button" class="card-btn btn btn-outline-primary btn-home-tab" @click="window.open('https://agence-cohesion-territoires.gouv.fr/france-services-36')">
+                        <button type="button" class="card-btn btn btn-outline-primary btn-home-tab" @click="window.open('https://www.france-services.gouv.fr/')">
                             <i class="las la-question-circle"></i>
                             En savoir plus
                         </button>
