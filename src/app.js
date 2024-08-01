@@ -10,10 +10,10 @@
 const url = new URL(window.location.href);
 const urlSearchParams = url.searchParams;
 const qtype = urlSearchParams.get("qtype");
+const dataUrl = "data/liste-fs-20240801.csv"; 
 
 // Chargement données globales ****************************************************************************
-
-const dataUrl = "https://www.data.gouv.fr/fr/datasets/r/afc3f97f-0ef5-429b-bf16-7b7876d27cd4"
+// const dataUrl = "https://www.data.gouv.fr/fr/datasets/r/afc3f97f-0ef5-429b-bf16-7b7876d27cd4"
 
 // charge depuis session storage ou fetch
 async function getData(path) {
@@ -23,23 +23,22 @@ async function getData(path) {
         return sessionData
     } else {
         try {
-            console.log("Chargement depuis data.gouv");
+            console.log("Chargement depuis data");
             let data = await fetchCsv(path);
+
             // s'assurer qu'il n'y a pas de coordonnées nulles sinon la page plante
             data = data.filter(e => e.latitude != 0 & e.latitude != "" & e.longitude != 0 & e.longitude != "" & e.id_fs != "")
             // transformations avant utilisation pour obtenir les catégories de FS
-            // data.forEach(e => {
-            //     e.itinerance = e["itinerance"].toLowerCase();               
-            //     if(e.itinerance == "non" || e.itinerance == "") {
-            //         if(e.format_fs == "Site principal") {
-            //             e.type = "Siège";
-            //         } else if(e.format_fs == "Antenne") {
-            //             e.type = "Antenne";
-            //         }
-            //     } else {
-            //         e.type=  "Bus";
-            //     };
-                // });
+            data = data.map(e => {
+                e.type = e.type_fs;
+                e.format = e.format_fs;
+                e.groupe = e.groupe_fs;
+                delete e.type_fs;
+                delete e.format_fs;
+                delete e.groupe_fs;
+                return e;
+            });
+
                 data.forEach(e => {
                     e.type = e.type.toLowerCase(); // Assurez-vous que les comparaisons sont insensibles à la casse
                 
