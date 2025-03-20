@@ -13,7 +13,7 @@ const qtype = urlSearchParams.get("qtype");
 // const dataUrl = "data/liste-fs-20240801.csv"; 
 
 // Chargement données globales ****************************************************************************
-const dataUrl = "https://www.data.gouv.fr/fr/datasets/r/afc3f97f-0ef5-429b-bf16-7b7876d27cd4"
+const dataUrl = "https://www.data.gouv.fr/fr/datasets/r/31576dff-fd61-4de9-819f-32c2f880b142"
 
 // charge depuis session storage ou fetch
 async function getData(path) {
