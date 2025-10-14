@@ -10,10 +10,10 @@
 const url = new URL(window.location.href);
 const urlSearchParams = url.searchParams;
 const qtype = urlSearchParams.get("qtype");
-// const dataUrl = "data/liste-fs-20240801.csv"; 
+const dataUrl = "data/liste-fs-20251013.csv"; 
 
 // Chargement données globales ****************************************************************************
-const dataUrl = "https://www.data.gouv.fr/fr/datasets/r/31576dff-fd61-4de9-819f-32c2f880b142"
+//const dataUrl = "https://www.data.gouv.fr/fr/datasets/r/31576dff-fd61-4de9-819f-32c2f880b142"
 
 // charge depuis session storage ou fetch
 async function getData(path) {
