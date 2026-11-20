@@ -10,11 +10,14 @@
 const url = new URL(window.location.href);
 const urlSearchParams = url.searchParams;
 const qtype = urlSearchParams.get("qtype");
-const dataUrl = "data/liste-fs-20251013.csv"; 
+const dataUrl = "data/liste-fs-20261119.csv";
+// Fond de carte : Géoplateforme IGN (Plan IGN v2)
+const TILE_URL = 'https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}';
+const TILE_ATTRIBUTION = '<a href="https://cartotheque.anct.gouv.fr/cartes" target="_blank">ANCT</a> | Fond cartographique &copy; <a href="https://www.ign.fr/" target="_blank">IGN</a>';
 
 // Chargement données globales ****************************************************************************
 //const dataUrl = "https://www.data.gouv.fr/fr/datasets/r/31576dff-fd61-4de9-819f-32c2f880b142"
-
+//const dataUrl = "https://www.data.gouv.fr/fr/datasets/r/31576dff-fd61-4de9-819f-32c2f880b"
 // charge depuis session storage ou fetch
 async function getData(path) {
     const sessionData = JSON.parse(sessionStorage.getItem("session_data1"));
@@ -485,8 +488,10 @@ const FichePDF = {
         }).setView(coords,16);
         
         
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
-            attribution: '<a href="https://agence-cohesion-territoires.gouv.fr/" target="_blank">ANCT</a> | Fond cartographique &copy;<a href="https://stadiamaps.com/">Stadia Maps</a> &copy;<a href="https://openmaptiles.org/">OpenMapTiles</a> &copy;<a href="http://openstreetmap.org">OpenStreetMap</a>',
+        L.tileLayer(TILE_URL, {
+            attribution: TILE_ATTRIBUTION,
+            maxZoom: 19,
+            crossOrigin: true
         }).addTo(map);
 
         L.control.scale({ position: 'bottomright', imperial:false }).addTo(map);
@@ -1075,8 +1080,8 @@ const LeafletMap = {
                 // config initiale
                 map:{
                     container:'mapid',
-                    tileLayer:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                    attribution: '<a href="https://cartotheque.anct.gouv.fr/cartes" target="_blank">ANCT</a> | Fond cartographique &copy;<a href="https://stadiamaps.com/">Stadia Maps</a> &copy;<a href="https://openmaptiles.org/">OpenMapTiles</a> &copy;<a href="http://openstreetmap.org">OpenStreetMap</a>',
+                    tileLayer: TILE_URL,
+                    attribution: TILE_ATTRIBUTION,
                     zoomPosition:'topright',
                     scalePosition:'bottomright',
                     initialView:{
